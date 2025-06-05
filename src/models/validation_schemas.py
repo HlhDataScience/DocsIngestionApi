@@ -36,4 +36,4 @@ class EndpointSpec(NamedTuple):
     path: str
     handler: Union[ApiEndPointProtocolFunction, AsyncApiEndpointProtocolFunction]
     required_params: List[str]
-    response_model: Optional[Union[FastApiGetResponse, FastApiPostResponse]]
+    response_model: Optional[BaseModel] = None
