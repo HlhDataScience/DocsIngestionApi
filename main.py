@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI  # type: ignore
 
 from src.controllers import FastApiFramework, root_spec, post_documents_spec, get_docs_uploaded_spec
 

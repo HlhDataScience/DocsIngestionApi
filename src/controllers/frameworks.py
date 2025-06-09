@@ -183,7 +183,7 @@ class FastApiFramework(AppInterface):
         app_type: Type[FastAPI],
         title: str,
         version: str,
-        api_spec: Tuple[EndpointSpec],
+        api_spec: Tuple[EndpointSpec, ...],
     ) -> Self:
         """
         Create a FastApiFramework instance from an API specification.

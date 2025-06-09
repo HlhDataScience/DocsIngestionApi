@@ -9,7 +9,7 @@ This includes:
 """
 
 from .client_interfaces import VectorDataBaseClientInterfaceAsync
-from .controller_protocols import protocol_checker, ApiEndPointProtocolFunction, AsyncApiEndpointProtocolFunction
+from .controller_protocols import  ApiEndPointProtocolFunction, AsyncApiEndpointProtocolFunction, protocol_checker
 from .framework_interfaces import AppInterface
 
 

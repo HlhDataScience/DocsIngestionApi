@@ -6,7 +6,7 @@ Includes:
 - protocol_checker: A utility to validate whether a list of functions conforms to the specified protocol.
 """
 
-from typing import Any, Callable, Coroutine, Dict, List, Protocol, runtime_checkable
+from typing import Any, Callable, Coroutine, Dict, List, Protocol, runtime_checkable, Type, Union
 
 @runtime_checkable
 class AsyncApiEndpointProtocolFunction(Protocol):
@@ -30,23 +30,29 @@ class ApiEndPointProtocolFunction(Protocol):
     - a dictionary with string keys and arbitrary values (e.g., a JSON response), or
     - any other return type (to allow for flexible response handling).
     """
-    def __call__(self, *args: Any, **kwargs: Any) -> Callable[..., Any]:
+    def __call__(self, *args: Any, **kwargs: Any) -> Dict[str, Any] | Any:
         ...
 
 
-
-def protocol_checker(fn_list: List[Callable[..., Any]], protocol: ApiEndPointProtocolFunction | AsyncApiEndpointProtocolFunction) -> bool:
+def protocol_checker(
+    fn_list: List[Callable[..., Any]],
+    protocols: Union[
+        Type[ApiEndPointProtocolFunction],
+        Type[AsyncApiEndpointProtocolFunction],
+        tuple[Type[ApiEndPointProtocolFunction | AsyncApiEndpointProtocolFunction], ...]
+    ]
+) -> bool:
     """
-    
-    Checks whether all functions in a given list conform to a specified runtime-checkable protocol.
+    Checks whether all functions in the list conform to at least one of the given runtime-checkable protocols.
 
     Parameters:
-    - fn_list (List[Callable[..., Any]]): A list of functions to validate.
-    - protocol (ApiEndpointProtocolFunction): A protocol instance used to verify function compliance.
+    - fn_list: A list of functions to validate.
+    - protocols: A single protocol class or a tuple of protocol classes.
 
     Returns:
-    - bool: True if all functions implement the given protocol, False otherwise.
-
-    This is useful for validating dynamic API endpoint registration or plugin systems where behavior contracts are important.
+    - True if all functions match at least one of the specified protocols, False otherwise.
     """
-    return all(isinstance(fn, protocol) for fn in fn_list)  # type: ignore
+    if not isinstance(protocols, tuple):
+        protocols = (protocols,)
+
+    return all(any(isinstance(fn, proto) for proto in protocols) for fn in fn_list)

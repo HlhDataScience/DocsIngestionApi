@@ -7,6 +7,6 @@ class EndpointSpec(NamedTuple):
     FastAPI endpoint specification formating class
     """
     path: str
-    handler: Union[type[ApiEndPointProtocolFunction], type[AsyncApiEndpointProtocolFunction]]
+    handler: Union[ApiEndPointProtocolFunction, AsyncApiEndpointProtocolFunction]
     required_params: List[str]
     response_model: Optional[Union[type[FastApiGetResponse], type[FastApiPostResponse], type[APIInfoResponse]]]
