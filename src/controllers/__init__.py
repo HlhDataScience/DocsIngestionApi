@@ -1,8 +1,10 @@
-from .frameworks import FastApiFramework, EndpointSpec
-from .api_endpointfuncs import dev_get_post_docs_root
+from .frameworks import FastApiFramework
+from .specs import root_spec, post_documents_spec, get_docs_uploaded_spec
+
 __all__ = [
     "FastApiFramework",
-    "EndpointSpec",
-    "dev_get_post_docs_root"
+    "root_spec",
+    "post_documents_spec",
+    "get_docs_uploaded_spec"
 
 ]

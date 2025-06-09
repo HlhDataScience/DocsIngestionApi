@@ -1,7 +1,12 @@
-""" This file contains the instanciation of the router class for post docs as well as the controller function that are going to be used in the main entry program"""
-from typing import Any, Dict
+""" This file contains the instantiation of the router class for post docs as well as the controller function that are going to be used in the main entry program"""
+from typing import  Annotated, Any, Dict
 
+from fastapi import Query
+from pydantic_core import ValidationError
 
+from src.models.validation_schemas import DocxValidator
+from src.models.query_filters_schemas import QueryParameters
+from src.application.graph_orchestrator import stategraph_run
 
 def dev_get_post_docs_root() -> Dict[str, Any]:
     return {
@@ -28,3 +33,27 @@ def get_post_docs_root() -> Dict[str, Any]:
             "/openapi.json": "Esquema OpenAPI.",
         }
     }
+
+def get_uploaded_docs_info(query_parameters: Annotated[QueryParameters, Query()])-> Dict[str, Any]:
+    ...
+
+async def upload_docx(input_docs_path: str) -> Dict[str, Any]:
+
+    try:
+
+        DocxValidator(file_name=input_docs_path)
+    except ValidationError as ve:
+        return {"response" :
+                    {"code": 400,
+                     "message": f"{ve}"}
+
+        }
+
+
+    await stategraph_run(input_docs_path=input_docs_path)
+
+    return {"response" :
+                    {"code": 200,
+                     "message": f"Successfully transformed and uploaded document {input_docs_path} to Qdrant Knowledge Database."}
+            }
+

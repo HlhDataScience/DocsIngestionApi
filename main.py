@@ -1,22 +1,13 @@
 from fastapi import FastAPI
 
-from src.controllers import FastApiFramework, dev_get_post_docs_root
-from src.models import APIInfo
-from src.models.validation_schemas import EndpointSpec
+from src.controllers import FastApiFramework, root_spec, post_documents_spec, get_docs_uploaded_spec
 
-root_spec = EndpointSpec(
-    path= "/",
-    handler= dev_get_post_docs_root,
-    required_params= ["GET"],
-    response_model= APIInfo,
-
-)
 
 
 app_ = FastApiFramework.from_constructor(app_type=FastAPI,
                                          title="DocumentalIngestAPI",
-                                         version="1.0.0.",
-                                         api_spec=(root_spec,)
+                                         version="0.1.0",
+                                         api_spec=(root_spec, post_documents_spec, get_docs_uploaded_spec) #This is because to have a tuple with only one element it is necessary to have a final coma at the end.
                                          )
 
 

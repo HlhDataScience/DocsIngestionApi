@@ -13,9 +13,9 @@ from typing import Any, Dict
 
 from pydantic import BaseModel  # type: ignore
 
-class APIInfo(BaseModel):
+class APIInfoResponse(BaseModel):
     """
-    APIInfo
+    APIInfoResponse
 
     A class that represents information about the API, including a message,
     description, version, and available endpoints.
@@ -33,9 +33,16 @@ class APIInfo(BaseModel):
     endpoints: Dict[str, str]
 
 class FastApiPostResponse(BaseModel):
-    ...
+    status_code: int
+    message: str
+    content: Dict[str, Any]
 
 class FastApiGetResponse(BaseModel):
     status_code: int
     message: str
     content: Dict[str, Any]
+
+
+class GraphStateResponse(BaseModel):
+    node_name: str
+    response: Dict[str, Any]

@@ -8,11 +8,10 @@ Includes:
 - DocxValidator: Schema for processing DOCX-related data.
 - QdrantValidator: Schema for defining vector database entries.
 """
-from typing import List, Dict, NamedTuple, Union, Optional
+from typing import List, Dict
+from pydantic import BaseModel, field_validator  # type: ignore
 
-from src.abstractions import ApiEndPointProtocolFunction, AsyncApiEndpointProtocolFunction
-from pydantic import BaseModel  # type: ignore
-from .response_schemas import  FastApiGetResponse, FastApiPostResponse
+
 
 class QdrantValidator(BaseModel):
     """class to validate Qdrant data against a schema
@@ -26,14 +25,39 @@ class QdrantValidator(BaseModel):
     payload: Dict[str, str]
 
 class DocxValidator(BaseModel):
-    ...
 
+    """Validation model for docx file inputs in the application.
 
-class EndpointSpec(NamedTuple):
+    This class defines a simple validation mechanism for ensuring that the
+    provided file name corresponds to a docx file. It includes a single field
+    with validation rules.
+
+    Attributes:
+        file_name (str): The name of the file to validate, which must end with
+            the '.docx' extension.
+
+    Validators:
+        validate_docx: Ensures that the file name ends with '.pdf'.
     """
-    FastAPI endpoint specification formating class
-    """
-    path: str
-    handler: Union[ApiEndPointProtocolFunction, AsyncApiEndpointProtocolFunction]
-    required_params: List[str]
-    response_model: Optional[BaseModel] = None
+
+    file_name: str
+
+    @classmethod
+    @field_validator("file_name")
+    def validate_docx(cls, file_name: str) -> str:
+        """Validates that the file name corresponds to a docx file.
+
+        Args:
+            cls: The class itself.
+            file_name (str): The name of the file to validate.
+
+        Returns:
+            str: The validated file name.
+
+        Raises:
+            ValueError: If the file name does not end with '.pdf'.
+        """
+        if not file_name.endswith(".docx"):
+            raise ValueError("File must be a valid Microsoft Word document.")
+        return file_name
+

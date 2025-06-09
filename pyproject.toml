@@ -9,12 +9,13 @@ dependencies = [
     "fastapi[standard]>=0.115.12", # implementación concreta de las abstracciones
     "fastexcel>=0.14.0",
     "langchain>=0.3.25", #llm app_framework framework para diseñar el extractor de q&a en el word
+    "langchain-community>=0.3.24",
     "langchain-unstructured>=0.1.6", #wrapper en torno a la librería unstructured.
     "langgraph>=0.4.5", # framework para grafos que dirigen el flujo de pensamiento del LLM.
     "notebook>=7.4.3",
     "openai>=1.81.0", #Motor del llm que vamos a usar
     "polars>=1.30.0", # librería de manipulación de datos (posible eliminación)
-    "pydantic>=2.11.4", # Sistema de tipos seguros para la api
+    "pydantic>=2.11.4", # Sistema de tipose seguros para la api
     "requests>=2.32.3", # posible eliuminación
     "unstructured-client>=0.35.0", # cliente para el servcicio de unestructured
 ]
