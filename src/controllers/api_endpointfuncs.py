@@ -101,10 +101,11 @@ def dev_get_post_docs_root() -> Dict[str, Any]:
     return {
         "message" : "Bienvenido a DocumentalIngestAPI",
         "description" : "Servicio de Ingesta Documental para Bases de Conocimiento",
-        "version" : "DEV VERSION 0.1.0",
+        "version" : "DEV VERSION 1.9",
         "endpoints" : {
-            "/uploadocs" : "Endpoint para el envío de documentos de word a la base de conocimiento de Qdrant",
-            "/search" : "Endpoint para la consulta de los documentos subidos",
+            "/generate-key" : "Endpoint para generar nuevas claves API, protegido por una clave de administrador si está configurada. Genera y almacena las claves API.",
+            "/search" : "REQUIERE API KEY. Recupera información sobre los documentos previamente subidos en función de los parámetros de consulta.",
+            "/uploadocs": "REQUIERE API KEY. Procesa y sube documentos de Word a la base de conocimiento de Qdrant de forma asíncrona utilizando un flujo de trabajo basado en grafos potenciado por GenAI.",
             "/docs": "Documentación de la API (Swagger UI).",
             "/openapi.json": "Esquema OpenAPI.",
         }
@@ -142,7 +143,9 @@ def get_post_docs_root() -> Dict[str, Any]:
         "description" : "Servicio de Ingesta Documental para Bases de Conocimiento",
         "version" : "1.0.0",
         "endpoints" : {
-            "/postdocs" : "Endpoint para el envío de documentos de word a la base de conocimiento de Qdrant",
+            "/generate-key" : "Endpoint para generar nuevas claves API. Genera y almacena las claves API.",
+            "/search" : "REQUIERE API KEY. Recupera información sobre los documentos previamente subidos en función de los parámetros de consulta.",
+            "/uploadocs": "REQUIERE API KEY. Procesa y sube documentos de Word a la base de conocimiento de Qdrant de forma asíncrona utilizando un flujo de trabajo basado en grafos potenciado por GenAI.",
             "/docs": "Documentación de la API (Swagger UI).",
             "/openapi.json": "Esquema OpenAPI.",
         }
@@ -268,7 +271,7 @@ async def upload_docx(input_docs_path: str, valid_key: str = Depends(validate_ap
 
 async def generate_api_key_point(
         request: ApiKeyGenerationRequest,
-        admin_key: Optional[str] = Security(api_key_header)
+        # admin_key: Optional[str] = Security(api_key_header)
 )-> Dict[str, Any]:
     """
     Public endpoint to generate new api keys protected by admin key if configured. It generates and stores the api_keys.
@@ -277,7 +280,7 @@ async def generate_api_key_point(
     :return: Dictionary containing the new api key
     """
 
-    # We should implement a security measure for the the admin in the production case
+    # We should implement a security measure for the admin in the production case
 
     raw_key = generate_api_key()
     hashed_key = hash_key(raw_key)

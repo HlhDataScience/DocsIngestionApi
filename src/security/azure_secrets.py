@@ -48,8 +48,8 @@ async def store_key_in_vault(key_id: str, hashed_key: str, description: str, exp
             detail=f"failure to store api key: {str(httpe)}"
         )
 async def validate_api_key(
-        api_key: str = Security(api_key_header)
-)-> str:
+        api_key: str = Security(api_key_header) #enable in production.
+)-> str| None:
     """
     Validates the provided api key against the azure key vault secret.
     :param api_key: api key to validate

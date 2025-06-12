@@ -11,9 +11,9 @@ from typing import Callable, Optional, Tuple
 from langgraph.graph import END, StateGraph, START
 
 from src.models import EvalDecision, NodeFunctionsTuple, StateDictionary
-from src.utils import setup_logging
+from src.utils import setup_custom_logging
 
-logger = setup_logging(log_file_path="logs/test.log")
+logger = setup_custom_logging(logger_name= "langgraph.log",log_file_path="logs")
 def self_reflecting_stategraph_factory_constructor(state_dict: type[StateDictionary],
                                    node_functions: Tuple[NodeFunctionsTuple, ...],
                                    router_function: Optional[Callable[
