@@ -44,7 +44,7 @@ from src.models import (
     FastApiGetResponse,
     FastApiPostResponse,
 )
-from .api_endpointfuncs import dev_get_post_docs_root, get_uploaded_docs_info, upload_docx
+from .api_endpointfuncs import dev_get_post_docs_root, get_uploaded_docs_info, upload_docx, generate_api_key_point
 
 if not protocol_checker(
         fn_list= [dev_get_post_docs_root, upload_docx, get_uploaded_docs_info],
@@ -81,4 +81,11 @@ get_docs_uploaded_spec = EndpointSpec(
     handler= get_uploaded_docs_info, # type: ignore
     required_params= ["GET"],
     response_model= FastApiGetResponse,
+)
+
+post_generated_api_key_spec = EndpointSpec(
+    path= "/generate-key",
+    handler= generate_api_key_point,
+    required_params= ["POST"],
+    response_model= FastApiPostResponse
 )

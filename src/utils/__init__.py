@@ -1,13 +1,14 @@
 
 from .utilities import(
-    setup_logging,
     load_json_qa_sample,
     load_markdown,
     create_engine
 )
+from .loggers import setup_basic_logging, setup_custom_logging
 
 __all__ = [
-    "setup_logging",
+    "setup_basic_logging",
+    "setup_custom_logging",
     "load_json_qa_sample",
     "load_markdown",
     "create_engine"

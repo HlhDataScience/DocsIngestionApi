@@ -3,6 +3,7 @@ from .validation_schemas import QdrantValidator, DocxValidator, QdrantDataPointC
 from .query_filters_schemas import QueryParameters
 from .specs_schemas import  EndpointSpec
 from .graph_workflow_schemas import LlmGenerationResponse, NodeFunctionsTuple, StateDictionary, EvalDecision, LlmEvaluatorResponse
+from .security_schemas import ApiKeyGenerationRequest
 __all__= [
     "APIInfoResponse",
     "DocxValidator",
@@ -18,6 +19,7 @@ __all__= [
     "LlmEvaluatorResponse",
     "QdrantBotAnswerConformer",
     "QdrantDataPointConformer",
+    "ApiKeyGenerationRequest",
 
 ]
 

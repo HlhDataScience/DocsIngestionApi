@@ -47,9 +47,9 @@ Usage:
     route decorators to create HTTP endpoints.
 """
 
-from typing import Annotated, Any, Dict
+from typing import Annotated, Any, Dict, Optional
 
-from fastapi import Query
+from fastapi import Query, Security, Depends
 from pydantic_core import ValidationError
 
 from src.application import (
@@ -63,9 +63,16 @@ from src.models import (
 DocxValidator,
 QueryParameters,
 StateDictionary,
+ApiKeyGenerationRequest
 )
-from src.utils import setup_logging
-
+from src.security import (
+    API_KEY_PREFIX,
+    api_key_header,
+    hash_key,
+    generate_api_key,
+    store_key_in_vault,
+    validate_api_key
+)
 
 
 def dev_get_post_docs_root() -> Dict[str, Any]:
@@ -141,7 +148,7 @@ def get_post_docs_root() -> Dict[str, Any]:
         }
     }
 
-def get_uploaded_docs_info(query_parameters: Annotated[QueryParameters, Query()])-> Dict[str, Any]:
+def get_uploaded_docs_info(query_parameters: Annotated[QueryParameters, Query()], valid_key: str = Depends(validate_api_key))-> Dict[str, Any]:
     """
         Retrieve information about previously uploaded documents based on query parameters.
 
@@ -180,7 +187,7 @@ def get_uploaded_docs_info(query_parameters: Annotated[QueryParameters, Query()]
     """
     ...
 
-async def upload_docx(input_docs_path: str) -> Dict[str, Any]:
+async def upload_docx(input_docs_path: str, valid_key: str = Depends(validate_api_key)) -> Dict[str, Any]:
     """
     Process and upload Word documents to the Qdrant knowledge base asynchronously.
 
@@ -232,6 +239,7 @@ async def upload_docx(input_docs_path: str) -> Dict[str, Any]:
     Raises:
         ValidationError: Caught internally and returned as HTTP 400 response
         Exception: Other processing errors are propagated to the caller
+        :param valid_key:
     """
     try:
 
@@ -258,3 +266,32 @@ async def upload_docx(input_docs_path: str) -> Dict[str, Any]:
                      "content_details": result}
             }
 
+async def generate_api_key_point(
+        request: ApiKeyGenerationRequest,
+        admin_key: Optional[str] = Security(api_key_header)
+)-> Dict[str, Any]:
+    """
+    Public endpoint to generate new api keys protected by admin key if configured. It generates and stores the api_keys.
+    :param request: The request object
+    :param admin_key: The admin api key
+    :return: Dictionary containing the new api key
+    """
+
+    # We should implement a security measure for the the admin in the production case
+
+    raw_key = generate_api_key()
+    hashed_key = hash_key(raw_key)
+    key_id = F"{API_KEY_PREFIX}{hashed_key}"
+
+    await store_key_in_vault(
+        key_id=key_id,
+        hashed_key=hashed_key,
+        description=request.description,
+        expire_in_days=request.expire_in_days,
+    )
+    return {
+        "api_key": raw_key,
+        "description": request.description,
+        "expire_in_days": request.expire_in_days,
+        "warning": "ATENCIÓN: Guarde la clave de forma segura. No volverá a ver la clave nunca más."
+    }

@@ -4,7 +4,9 @@ version = "0.1.0"
 description = "FastAPI API for processing Word documents into Q&A pairs using OpenAI and storing them in Qdrant"
 requires-python = "==3.12.*"
 dependencies = [
-    "aiohttp>=3.12.0", # base para el cliente asíncrono para qdrant
+    "aiohttp>=3.12.0",
+    "azure-identity>=1.23.0",
+    "azure-keyvault-secrets>=4.9.0", # base para el cliente asíncrono para qdrant
     "dotenv>=0.9.9", # manejo secretos
     "fastapi[standard]>=0.115.12", # implementación concreta de las abstracciones
     "fastexcel>=0.14.0",

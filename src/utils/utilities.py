@@ -7,36 +7,13 @@ The functions are written in a functional programming style, with lazy evaluatio
 import json
 import logging
 import os
-import sys
+
 from pathlib import Path
 from typing import Dict, Generator
 
 from langchain_openai import AzureChatOpenAI
 import numpy as np
 
-def setup_logging(log_file_path: str) -> logging.Logger:
-    """
-    Sets up application-specific logging.
-    :param log_file_path: Path to the log file.
-    :return: Configured logger object.
-    """
-    logger = logging.getLogger("my_app_logger")
-    logger.setLevel(logging.INFO)
-    logger.propagate = False  # VERY IMPORTANT: prevents double logs if root logger is also logging
-
-    # Avoid adding handlers multiple times if setup is called more than once
-    if not logger.handlers:
-        formatter = logging.Formatter("%(asctime)s [%(levelname)s] - %(message)s", "%Y-%m-%d %H:%M:%S")
-
-        file_handler = logging.FileHandler(log_file_path)
-        file_handler.setFormatter(formatter)
-        logger.addHandler(file_handler)
-
-        stream_handler = logging.StreamHandler(sys.stdout)
-        stream_handler.setFormatter(formatter)
-        logger.addHandler(stream_handler)
-
-    return logger
 
 
 
@@ -56,7 +33,7 @@ def load_markdown(markdown_file_name: str, directory_path: str) -> Generator[str
 
     yield path.read_text(encoding="utf-8")
 
-logger = setup_logging(log_file_path="logs/test.log")
+
 def load_json_qa_sample(json_path: str) -> Dict[str, str]:
     """
     Load a JSON file containing Q&A pairs and return a random sample of 5 entries.
