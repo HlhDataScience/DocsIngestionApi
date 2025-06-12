@@ -24,7 +24,7 @@ All nodes implement comprehensive error handling with state preservation,
 allowing the workflow to gracefully handle failures and maintain execution context.
 """
 
-import logging
+
 import os
 from typing import Any, Coroutine, Dict, List, Tuple
 
@@ -46,10 +46,10 @@ from src.models import (
     QdrantValidator,
     LlmGenerationResponse
 )
-from src.utils import load_json_qa_sample, load_markdown
+from src.utils import load_json_qa_sample, load_markdown, setup_logging
 from .client_setup import EVALUATOR_ENGINE, GENERATOR_ENGINE, REFINER_ENGINE
 
-
+logger = setup_logging(log_file_path="logs/test.log")
 def parse_wordformat_document(state: StateDictionary)->StateDictionary:
     """
     Parse a Word document (.docx) and extract its text content.
@@ -79,7 +79,7 @@ def parse_wordformat_document(state: StateDictionary)->StateDictionary:
     """
 
     if state["error"] is not None:
-        logging.error(f"Error encountered in the node within the function {parse_wordformat_document.__name__}\n\n Details: {state["error"]}")
+        logger.error(f"Error encountered in the node within the function {parse_wordformat_document.__name__}\n\n Details: {state["error"]}")
         return state
     loader_instance = UnstructuredWordDocumentLoader(state["original_document_path"])
 
@@ -87,7 +87,7 @@ def parse_wordformat_document(state: StateDictionary)->StateDictionary:
 
     state["status"]  = "Parsing docx file step completed"
     state["original_document"] = "\n".join(d.page_content for d in docs )
-    logging.info("Parsing docx file step completed for parsing documents step. ")
+    logger.info("Parsing docx file step completed for parsing documents step. ")
     return state
 
 
@@ -130,7 +130,7 @@ async def llm_call(
         - Uses LangChain's chain composition (prompt | llm | parser)
     """
     if state["error"] is not None:
-        logging.error(f"Error encountered in the node within the internal function {llm_call.__name__}\n\n Details: {state["error"]}")
+        logger.error(f"Error encountered in the node within the internal function {llm_call.__name__}\n\n Details: {state["error"]}")
         return state
 
     llm = llm_engine
@@ -178,7 +178,7 @@ async def qa_generator_node(state:StateDictionary)->StateDictionary | None:
     """
 
     if state["error"] is not None:
-        logging.error(
+        logger.error(
             f"Error encountered in the node within the function {qa_refiner_node.__name__}\n\n Details: {state["error"]}")
         return state
 
@@ -218,13 +218,13 @@ async def qa_generator_node(state:StateDictionary)->StateDictionary | None:
             "status": "error",
             "message": str(e),
         }
-        logging.error(e)
+        logger.error(e)
         return state
 
 
     state["status"] = "Generator_qa step completed"
     state["generated_qa"] = result
-    logging.info("Generator qa step completed")
+    logger.info("Generator qa step completed")
     return state
 
 
@@ -267,7 +267,7 @@ async def evaluator_node(state: StateDictionary)->Coroutine[None,None, Dict[str,
     """
 
     if state["error"] is not None:
-        logging.error(
+        logger.error(
             f"Error encountered in the node within the function {evaluator_node.__name__}\n\n Details: {state["error"]}")
         return state
 
@@ -326,13 +326,13 @@ async def evaluator_node(state: StateDictionary)->Coroutine[None,None, Dict[str,
             "status": "error",
             "message": str(e),
         }
-        logging.error(e)
+        logger.error(e)
         return state
 
 
     state["status"] = "Evaluator_qa step completed"
     state["evaluator_response"] = result
-    logging.info(f"Evaluator qa step completed. Pass number {state["max_retry"]}")
+    logger.info(f"Evaluator qa step completed. Pass number {state["max_retry"]}")
     return state
 
 def evaluator_router(state:StateDictionary)-> EvalDecision | StateDictionary:
@@ -421,7 +421,7 @@ async def qa_refiner_node(state:StateDictionary)-> Coroutine[None,None, Dict[str
     """
 
     if state["error"] is not None:
-        logging.error(f"Error encountered in the node within the function {qa_refiner_node.__name__}\n\n Details: {state["error"]}")
+        logger.error(f"Error encountered in the node within the function {qa_refiner_node.__name__}\n\n Details: {state["error"]}")
         return state
 
 
@@ -468,14 +468,14 @@ async def qa_refiner_node(state:StateDictionary)-> Coroutine[None,None, Dict[str
             "status": "error",
             "message": str(e),
         }
-        logging.error(e)
+        logger.error(e)
         return state
 
 
     state["max_retry"] += 1
     state["status"] = f"Refiner_qa step completed in the iteration number {state["max_retry"]}"
     state["refined_qa"] = result
-    logging.info(f"Refiner_qa step completed in the iteration number {state["max_retry"]}")
+    logger.info(f"Refiner_qa step completed in the iteration number {state["max_retry"]}")
     return state
 
 
@@ -527,7 +527,7 @@ async def upload_points_to_qdrant(state: StateDictionary)->Coroutine[None,None, 
     Error Handling:
         - Returns early if state contains existing errors
         - Catches upload exceptions and sets error state
-        - Provides detailed error logging for debugging
+        - Provides detailed error logger for debugging
 
     Side Effects:
         - Creates Qdrant collection if it doesn't exist
@@ -536,7 +536,7 @@ async def upload_points_to_qdrant(state: StateDictionary)->Coroutine[None,None, 
     """
 
     if state["error"] is not None:
-        logging.error(f"Error encountered in the node within the function {upload_points_to_qdrant.__name__}\n\n Details: {state["error"]}")
+        logger.error(f"Error encountered in the node within the function {upload_points_to_qdrant.__name__}\n\n Details: {state["error"]}")
         return state
 
     async with aiohttp.ClientSession() as session:
@@ -557,8 +557,8 @@ async def upload_points_to_qdrant(state: StateDictionary)->Coroutine[None,None, 
                 "status": "error",
                 "message": str(e),
             }
-            logging.error(e)
+            logger.error(e)
             return state
         state["status"] = "successfully uploaded documents"
-        logging.info("Successfully uploaded documents")
+        logger.info("Successfully uploaded documents")
         return state

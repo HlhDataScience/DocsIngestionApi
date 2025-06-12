@@ -14,21 +14,30 @@ from typing import Dict, Generator
 from langchain_openai import AzureChatOpenAI
 import numpy as np
 
-def setup_logging(log_file_path: str)-> None:
+def setup_logging(log_file_path: str) -> logging.Logger:
     """
-    Small utility function to set up logging using the python module logging.
-    :param log_file_path: The path in which the log will be saved.
-    :return: None
+    Sets up application-specific logging.
+    :param log_file_path: Path to the log file.
+    :return: Configured logger object.
     """
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] - %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-        handlers=[
-            logging.FileHandler(log_file_path),
-            logging.StreamHandler(sys.stdout)
-        ]
-    )
+    logger = logging.getLogger("my_app_logger")
+    logger.setLevel(logging.INFO)
+    logger.propagate = False  # VERY IMPORTANT: prevents double logs if root logger is also logging
+
+    # Avoid adding handlers multiple times if setup is called more than once
+    if not logger.handlers:
+        formatter = logging.Formatter("%(asctime)s [%(levelname)s] - %(message)s", "%Y-%m-%d %H:%M:%S")
+
+        file_handler = logging.FileHandler(log_file_path)
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+
+        stream_handler = logging.StreamHandler(sys.stdout)
+        stream_handler.setFormatter(formatter)
+        logger.addHandler(stream_handler)
+
+    return logger
+
 
 
 def load_markdown(markdown_file_name: str, directory_path: str) -> Generator[str, None, None]:
@@ -47,7 +56,7 @@ def load_markdown(markdown_file_name: str, directory_path: str) -> Generator[str
 
     yield path.read_text(encoding="utf-8")
 
-
+logger = setup_logging(log_file_path="logs/test.log")
 def load_json_qa_sample(json_path: str) -> Dict[str, str]:
     """
     Load a JSON file containing Q&A pairs and return a random sample of 5 entries.
@@ -59,11 +68,14 @@ def load_json_qa_sample(json_path: str) -> Dict[str, str]:
     Returns:
         Dict[str, str]: A list of 5 randomly selected Q&A dictionaries.
     """
-    with open(json_path, "r", encoding="utf-8") as json_file:
-        full = json.load(json_file)
-    sample = np.random.choice(full, size=5).tolist()
-    return sample
+    try:
+        with open(json_path, "r", encoding="utf-8") as json_file:
+            full = json.load(json_file)
+        sample = np.random.choice(full, size=5).tolist()
+        return sample
+    except FileNotFoundError:
 
+        raise FileNotFoundError(f"Prompt file not found at: {json_path}")
 
 def create_engine(params: dict) -> AzureChatOpenAI:
     """

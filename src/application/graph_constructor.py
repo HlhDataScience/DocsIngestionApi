@@ -5,16 +5,16 @@ This module contains the factory pattern function to create self reflecting grap
 NodeFunctionsTuple to estructure the different steps of the flow.
 """
 
-import logging
 
 from typing import Callable, Optional, Tuple
 
 from langgraph.graph import END, StateGraph, START
 
 from src.models import EvalDecision, NodeFunctionsTuple, StateDictionary
+from src.utils import setup_logging
 
-
-def self_reflecting_stategraph_factory_constructor(state_dict: StateDictionary,
+logger = setup_logging(log_file_path="logs/test.log")
+def self_reflecting_stategraph_factory_constructor(state_dict: type[StateDictionary],
                                    node_functions: Tuple[NodeFunctionsTuple, ...],
                                    router_function: Optional[Callable[
                                        [StateDictionary], EvalDecision | StateDictionary]] = None) -> StateGraph:
@@ -29,7 +29,7 @@ def self_reflecting_stategraph_factory_constructor(state_dict: StateDictionary,
 
     # First pass: Add all nodes
     for fn in node_functions:
-        logging.info(f"Adding node {fn.node_name}")
+        logger.info(f"Adding node {fn.node_name}")
         graph_constructor.add_node(fn.node_name, fn.function)
 
 
@@ -52,7 +52,7 @@ def self_reflecting_stategraph_factory_constructor(state_dict: StateDictionary,
         # Add START edge to first node
         if index == 0:
             graph_constructor.add_edge(START, node_name)
-            logging.info("Adding first edge for START node")
+            logger.info("Adding first edge for START node")
         # Handle directed edges
         if fn.edge_type == "directed":
             # Add edge from previous node only if:
@@ -72,27 +72,27 @@ def self_reflecting_stategraph_factory_constructor(state_dict: StateDictionary,
 
                 if should_add_edge:
                     graph_constructor.add_edge(prev_node_name, node_name)
-                    logging.info(f"Adding edge between {prev_node_name} and {node_name}")
+                    logger.info(f"Adding edge between {prev_node_name} and {node_name}")
             # Handle loop_back_to edges
             if fn.loop_back_to:
                 graph_constructor.add_edge(node_name, fn.loop_back_to)
-                logging.info(f"Adding  recursive edge between {node_name} and {fn.loop_back_to}")
+                logger.info(f"Adding  recursive edge between {node_name} and {fn.loop_back_to}")
 
         # Handle conditional edges
         elif fn.edge_type == "conditional":
             if not router_function:
-                logging.error("router_function must be provided for conditional edges.")
+                logger.error("router_function must be provided for conditional edges.")
                 raise ValueError("router_function must be provided for conditional edges.")
 
             if not fn.conditional_mapping:
-                logging.error("fn.conditional_mapping must be provided for conditional edges.")
+                logger.error("fn.conditional_mapping must be provided for conditional edges.")
                 raise ValueError("conditional_mapping must be provided for conditional edges.")
 
             # Add edge from previous node to this conditional node
             if index > 0:
                 prev_fn = node_functions[index - 1]
                 graph_constructor.add_edge(prev_fn.node_name, node_name)
-                logging.info(f"Adding conditional edge between {prev_fn.node_name} and {node_name}")
+                logger.info(f"Adding conditional edge between {prev_fn.node_name} and {node_name}")
             # Add conditional edges from this node
             graph_constructor.add_conditional_edges(
                 source=node_name,
@@ -112,6 +112,6 @@ def self_reflecting_stategraph_factory_constructor(state_dict: StateDictionary,
     # Add edge to END from the final node
     if final_node:
         graph_constructor.add_edge(final_node, END)
-        logging.info(f"Adding final node {final_node}")
-    logging.info("Graph constructed ready to compile")
+        logger.info(f"Adding final node {final_node}")
+    logger.info("Graph constructed ready to compile")
     return graph_constructor

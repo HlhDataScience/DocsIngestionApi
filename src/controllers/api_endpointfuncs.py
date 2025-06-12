@@ -242,7 +242,7 @@ async def upload_docx(input_docs_path: str) -> Dict[str, Any]:
                      "message": f"{ve}"}
 
         }
-    examples_docs_path = r"C:\Users\hlopez\PycharmProjects\ingesta_documental_bc\benchmark\benchmark_files\original_export\qdrant_data_export.json"
+    examples_docs_path = "benchmark/benchmark_files/original_export/qdrant_data_export.json"
     uncompiled_graph = self_reflecting_stategraph_factory_constructor(state_dict=StateDictionary,
                                                                       node_functions=NODES_FUNCS,
                                                                       router_function=evaluator_router)
