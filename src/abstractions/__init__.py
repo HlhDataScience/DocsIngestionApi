@@ -1,11 +1,11 @@
 """
+abstractions module
 Domain module: defines core interfaces, validation contracts, and schemas.
 
 This includes:
 - Abstract interfaces for application behavior (e.g. AppInterface)
-- Input/output validation adapters using Pydantic
-- Protocols for controller endpoints
-- Core data schemas used across the app_framework
+- Abstract classes for vector database client (e.g. VectorDBClientInterfaceAsync)
+- Protocols for Duck Typing (e.g. ApiEndPointProtocolFunction)
 """
 
 from .client_interfaces import VectorDataBaseClientInterfaceAsync

@@ -1,0 +1,2 @@
+user
+Rewrite these synthetic Q&A pairs based on these human annotated examples and the instructions from the evaluator\n\nQA TO REWRITE:\n\n{generated_qa}\n\nEXAMPLES OF FORMAT AND FOCUS:\n\n{format examples}\n\n EVALUATOR INSTRUCTIONS:{evaluator instructions}\n\n{format_instructions}

@@ -1,5 +1,5 @@
 .venv
-bentchmark
+benchmark
 jupyter_tests
 logs
 .env.azure
@@ -11,7 +11,11 @@ endpoints.txt
 Bentchmark_results.csv
 grouped_qa.txt
 profile.html
+src/application/.env.azure.gpt4
 profile.html
+Qdrant_uploads.ipynb
+videos_moodleRE.xlsx
+assets/docs_for_testing/Informe de posibles mejoras del ubot basadas en prompting e información esperada por los estudiantes.docx
 testings.ipynb
 uv.lock
 test/test_fastapi_framework/__pycache__/

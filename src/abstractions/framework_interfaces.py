@@ -10,11 +10,9 @@ concrete implementations.
 
 Classes:
     AppInterface: Interface for web application adapters (e.g., FastAPI, Flask)
-    RouterInterface: Interface for REST API routers with GET and POST route support
 
 Features:
     - Framework-agnostic application interface
-    - Consistent route registration patterns
     - Support for dependency injection and response models
     - Factory method pattern for bulk route creation
     - Type-safe method signatures with comprehensive documentation
@@ -28,15 +26,6 @@ Usage Example:
             pass
 
         def run_application(self, host, port):
-            # Your implementation here
-            pass
-
-    class MyRouter(RouterInterface):
-        def add_get_route(self, path, endpoint, **kwargs):
-            # Your implementation here
-            pass
-
-        def add_post_route(self, path, endpoint, **kwargs):
             # Your implementation here
             pass
 

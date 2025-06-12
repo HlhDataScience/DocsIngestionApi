@@ -1,0 +1,2 @@
+system
+Your task is to compare generated Questions and Answers with Human annotated Questions and Answers. You need to reason if they are similar and return a category. Address the format rather than the content.

@@ -1,5 +1,6 @@
 from unittest.mock import patch
 
+from aiohttp.client_exceptions import ClientResponseError
 import pytest
 from yarl import URL
 from aioresponses import aioresponses
@@ -16,27 +17,26 @@ from pydantic import ValidationError
 
 @pytest.mark.asyncio
 async def test_created_collection_success(qdrant_client):
-    url = URL("http://localhost:6333/collections/testing_qdrant_client")
-
-    with aioresponses() as mocked:
-
-        mocked.put(url, status=200)
-
-        result = await qdrant_client.create_collection()
-
-        assert result is None
-        assert ("PUT", url) in mocked.requests
-
+    with aioresponses() as mock:
+        mock.put(
+            "http://localhost:6333/collections/testing_qdrant_client",
+            status=200,
+            payload={"status": "ok"}
+        )
+        await qdrant_client.create_collection()
 
 @pytest.mark.asyncio
 async def test_created_collection_failure(qdrant_client):
     url = URL("http://localhost:6333/collections/testing_qdrant_client")
 
     with aioresponses() as mocked:
-        mocked.put(url, status=404)
-        result = await qdrant_client.create_collection()
+        # Simulate a 404 error from the Qdrant server
+        mocked.put(url, status=404, payload={"status": "error"})
 
-        assert result is None
+        with pytest.raises(ClientResponseError) as exc_info:
+            await qdrant_client.create_collection()
+
+        assert exc_info.value.status == 404
         assert ("PUT", url) in mocked.requests
 
 
@@ -181,26 +181,26 @@ async def test_get_collection_info(qdrant_client):
         assert response["result"]["status"] == "green"
 
 
-def test_transform_points(qdrant_client):
+def test_verify_points(qdrant_client):
     fake_conformed_document = {'id': '36867605-88e1-4a14-ae45-d930396178ed',
                                'vector': {'dense': [-0.013694579] * 3072},
                                'payload': {
                                    'title': '¿Qué sucede si se superan asignaturas en convocatoria extraordinaria?',
                                    'document': 'La defensa del TFE se programará automáticamente para la convocatoria extraordinaria de defensa.'}}
-    conformed_item = qdrant_client._transform_points(item=fake_conformed_document)
+    conformed_item = qdrant_client._verify_points(item=fake_conformed_document)
 
     assert isinstance(conformed_item, dict)
     assert conformed_item
 
 
-def test_transform_points_fail(qdrant_client):
+def test_verify_points_fail(qdrant_client):
     # This document is likely malformed, e.g., missing 'id' or 'metadata'
     fake_not_conformed_document = {
         'vector': [0.01] * 3072  # Assuming this vector size is valid, but structure is not
     }
 
     with pytest.raises(ValidationError):  # or your custom error
-        qdrant_client._transform_points(fake_not_conformed_document)
+        qdrant_client._verify_points(fake_not_conformed_document)
 
 
 @pytest.mark.asyncio
@@ -390,8 +390,8 @@ async def test_upload_documents_success(qdrant_client):
         # Mock verification response
         mocked.get(URL(f"{verify_url_pattern}doc1"), payload=verify_response, status=200)
 
-        # Mock the _transform_points method to return the input unchanged
-        with patch.object(qdrant_client, '_transform_points', side_effect=lambda item: item):
+        # Mock the _verify_points method to return the input unchanged
+        with patch.object(qdrant_client, '_verify_points', side_effect=lambda item: item):
             await qdrant_client.upload_documents(documents, batch_size=2)
 
         # Verify upload was called
@@ -417,7 +417,7 @@ async def test_upload_documents_with_transformation(qdrant_client):
         mocked.get(URL(f"{verify_url_pattern}transformed_1"), payload=verify_response, status=200)
 
         # Mock transformation
-        with patch.object(qdrant_client, '_transform_points', return_value=transformed_doc):
+        with patch.object(qdrant_client, '_verify_points', return_value=transformed_doc):
             await qdrant_client.upload_documents([original_doc], batch_size=1)
 
         assert ("PUT", url) in mocked.requests
@@ -433,7 +433,7 @@ async def test_upload_documents_batch_processing(qdrant_client):
     upload_response = {"result": {"operation_id": 12350}, "status": "ok"}
     verify_response = {"result": {"id": "doc0"}, "status": "ok"}
 
-    with patch.object(qdrant_client, '_transform_points', side_effect=lambda item: item), \
+    with patch.object(qdrant_client, '_verify_points', side_effect=lambda item: item), \
             patch.object(qdrant_client, 'add_points_with_retry', return_value=upload_response) as mock_add, \
             patch.object(qdrant_client, '_verify_batch', return_value=verify_response) as mock_verify:
         await qdrant_client.upload_documents(documents, batch_size=2)

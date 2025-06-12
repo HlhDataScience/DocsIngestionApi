@@ -10,6 +10,8 @@ Este proyecto implementa una API desarrollada con FastAPI que permite la carga d
 
 ##### - [Contenidos](#contenidos)
 
+##### - [Lógica del la aplicación](#lógica-de-la-aplicación)
+
 ##### - [Modo de uso](#modo-de-uso)
 
 ##### - [Hecho](#hecho)
@@ -80,7 +82,9 @@ Este proyecto implementa una API desarrollada con FastAPI que permite la carga d
    ```bash
    pytest --cov=app_framework tests/
    ```
+## Lógica de la aplicación
 
+![alt text](assets/graph_workflow/graph_workflow.png)
 ### Hecho
 
 * Subida de archivos `.docx` a través de un endpoint REST.

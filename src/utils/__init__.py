@@ -1,7 +1,14 @@
 
-from .utilities import setup_logging, prepare_markdown
+from .utilities import(
+    setup_logging,
+    load_json_qa_sample,
+    load_markdown,
+    create_engine
+)
 
 __all__ = [
-    "prepare_markdown",
-    "setup_logging"
+    "setup_logging",
+    "load_json_qa_sample",
+    "load_markdown",
+    "create_engine"
 ]

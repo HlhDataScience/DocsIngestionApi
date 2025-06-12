@@ -1,0 +1,18 @@
+llm_engines:
+  generator:
+    temperature: 0.6
+    top_p: 0.85
+    frequency_penalty: 0.2
+    presence_penalty: 0.1
+
+  evaluator:
+    temperature: 0.2
+    top_p: 1.0
+    frequency_penalty: 0.0
+    presence_penalty: 0.0
+
+  refiner:
+    temperature: 0.2
+    top_p: 0.9
+    frequency_penalty: 0.2
+    presence_penalty: 0.1

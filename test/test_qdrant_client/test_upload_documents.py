@@ -23,8 +23,8 @@ async def test_upload_documents_success(qdrant_client):
         # Mock verification response
         mocked.get(URL(f"{verify_url_pattern}doc1"), payload=verify_response, status=200)
 
-        # Mock the _transform_points method to return the input unchanged
-        with patch.object(qdrant_client, '_transform_points', side_effect=lambda item: item):
+        # Mock the _verify_points method to return the input unchanged
+        with patch.object(qdrant_client, '_verify_points', side_effect=lambda item: item):
             await qdrant_client.upload_documents(documents, batch_size=2)
 
         # Verify upload was called
@@ -50,7 +50,7 @@ async def test_upload_documents_with_transformation(qdrant_client):
         mocked.get(URL(f"{verify_url_pattern}transformed_1"), payload=verify_response, status=200)
 
         # Mock transformation
-        with patch.object(qdrant_client, '_transform_points', return_value=transformed_doc):
+        with patch.object(qdrant_client, '_verify_points', return_value=transformed_doc):
             await qdrant_client.upload_documents([original_doc], batch_size=1)
 
         assert ("PUT", url) in mocked.requests
@@ -66,7 +66,7 @@ async def test_upload_documents_batch_processing(qdrant_client):
     upload_response = {"result": {"operation_id": 12350}, "status": "ok"}
     verify_response = {"result": {"id": "doc0"}, "status": "ok"}
 
-    with patch.object(qdrant_client, '_transform_points', side_effect=lambda item: item), \
+    with patch.object(qdrant_client, '_verify_points', side_effect=lambda item: item), \
             patch.object(qdrant_client, 'add_points_with_retry', return_value=upload_response) as mock_add, \
             patch.object(qdrant_client, '_verify_batch', return_value=verify_response) as mock_verify:
         await qdrant_client.upload_documents(documents, batch_size=2)

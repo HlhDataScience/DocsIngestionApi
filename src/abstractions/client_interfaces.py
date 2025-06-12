@@ -1,5 +1,5 @@
 """
-abstractions.py
+client_interfaces.py
 
 This module defines abstract interfaces for asynchronous vector database clients and
 data entry models. These abstractions are designed to standardize interactions with
@@ -21,12 +21,12 @@ Usage:
 
 Note:
     Implementers of `VectorDataBaseClientInterfaceAsync` are expected to also implement
-    the `VectorDataBaseEntryInterface`, ensuring compatibility between data models
+    the pydantic `BaseModel`, ensuring compatibility between data models
     and the vector database logic.
 """
 
 from abc import ABC, abstractmethod
-from typing import Coroutine, Any, Iterable, List, Dict
+from typing import Any, Coroutine, Dict, Iterable, List
 
 from pydantic import BaseModel
 
@@ -40,10 +40,6 @@ class VectorDataBaseClientInterfaceAsync(ABC):
     searching, and batch processing. All concrete implementations must provide
     async implementations of the abstract methods defined here.
 
-    IMPORTANT: Concrete implementations of this class MUST also implement the
-    VectorDataBaseEntryInterface to ensure compatibility between the client
-    and data model operations.
-
     Args:
         data_model (VectorDataBaseEntryInterface): The data model interface that
             defines the structure and format of vector database entries. This
@@ -51,14 +47,11 @@ class VectorDataBaseClientInterfaceAsync(ABC):
             interface and VectorDataBaseEntryInterface.
 
     Attributes:
-        _data_model (VectorDataBaseEntryInterface): Internal reference to the
+        _data_model (BaseModel): Internal reference to the
             data model used for vector database operations.
 
     Implementation Requirements:
-        - Must inherit from both AsyncVectorDataBaseClientInterface and
-          VectorDataBaseEntryInterface
-        - The data_model parameter in __init__ should typically be 'self'
-          when the same class implements both interfaces
+        - Must inherit from both AsyncVectorDataBaseClientInterface
 
     Abstract Methods:
         create_collection: Creates a new collection in the vector database
@@ -89,21 +82,6 @@ class VectorDataBaseClientInterfaceAsync(ABC):
         different vector database providers.
 
     Example:
-        class MyVectorDBClient(VectorDataBaseClientInterfaceAsync, VectorDataBaseEntryModel):
-        ...     def __init__(self):
-        ...         # Pass self as data_model since this class implements both interfaces
-        ...         super().__init__(self)
-        ...
-        ...     async def create_collection(self):
-        ...         # Implementation here
-        ...         pass
-        ...     # ... implement other abstract methods from both interfaces
-
-        Alternative pattern with separate data model:
-        class MyDataModel(VectorDataBaseEntryModel):
-        ...     # Implement VectorDataBaseEntryInterface methods
-        ...     pass
-
         class MyVectorDBClient(VectorDataBaseClientInterfaceAsync):
         ...     def __init__(self, data_model: type[BaseModel]):
         ...         super().__init__(data_model)
@@ -117,9 +95,6 @@ class VectorDataBaseClientInterfaceAsync(ABC):
                 f"data_model must implement BaseModel, "
                 f"got {type(self._data_model).__name__}"
             )
-
-
-
 
     @abstractmethod
     async def create_collection(self) -> Coroutine[Any, Any, Any] | None:
@@ -136,7 +111,7 @@ class VectorDataBaseClientInterfaceAsync(ABC):
         Raises:
             NotImplementedError: If not implemented in concrete class.
         """
-        ...
+        raise NotImplementedError
 
     @abstractmethod
     async def add_points_with_retry(self, points: Any) -> Coroutine[Any, Any, Any]:
@@ -155,21 +130,19 @@ class VectorDataBaseClientInterfaceAsync(ABC):
         Raises:
             NotImplementedError: If not implemented in concrete class.
         """
-        ...
+        raise NotImplementedError
 
     @abstractmethod
-    def _transform_points(self, item: Dict[str, Any]) -> Dict[str, Any]:
+    def _verify_points(self, item: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Transform data model into database-specific format.
+        Verifies data model into database-specific format.
 
-        This private method converts the VectorDataBaseEntryModel data
-        into the specific format required by the target vector database.
+        This private method checks a pydantic BaseModel against the data
         It is intended to be called internally by add_points_with_retry
         during the upload_documents workflow.
 
         Args:
-            data_model (VectorDataBaseEntryModel): The data model to transform.
-
+            item (Dict[str, Any]): Data point to be conformed by the data_model.
         Returns:
             Coroutine[Any, Any, Any]: A coroutine that when awaited returns
                 the transformed data in database-specific format.
@@ -177,7 +150,7 @@ class VectorDataBaseClientInterfaceAsync(ABC):
         Raises:
             NotImplementedError: If not implemented in concrete class.
         """
-        ...
+        raise NotImplementedError
 
     @abstractmethod
     async def upload_documents(self, items: Iterable[Dict[str, Any]], batch_size: int) -> Coroutine[Any, Any, Any]| None:
@@ -201,7 +174,7 @@ class VectorDataBaseClientInterfaceAsync(ABC):
         Raises:
             NotImplementedError: If not implemented in a concrete subclass.
         """
-        ...
+        raise NotImplementedError
 
     @abstractmethod
     async def get_collection_info(self) -> Coroutine[Any, Any, Any]:
@@ -218,7 +191,7 @@ class VectorDataBaseClientInterfaceAsync(ABC):
         Raises:
             NotImplementedError: If not implemented in concrete class.
         """
-        ...
+        raise NotImplementedError
 
     @abstractmethod
     async def _verify_batch(self, point_id:int) -> Coroutine[Any, Any, Any] | None:
@@ -227,6 +200,7 @@ class VectorDataBaseClientInterfaceAsync(ABC):
 
         This method should check and confirm that previously uploaded
         data has been properly stored and indexed in the vector database.
+        This method is thought to be used as private method inside upload_documents.
 
         Returns:
             Coroutine[Any, Any, Any]: A coroutine that when awaited returns
@@ -235,7 +209,7 @@ class VectorDataBaseClientInterfaceAsync(ABC):
         Raises:
             NotImplementedError: If not implemented in concrete class.
         """
-        ...
+        raise NotImplementedError
 
     @abstractmethod
     async def verify_upload(self) -> Coroutine[Any, Any, Any] | None:
@@ -252,7 +226,7 @@ class VectorDataBaseClientInterfaceAsync(ABC):
         Raises:
             NotImplementedError: If not implemented in a concrete subclass.
         """
-        ...
+        raise NotImplementedError
     @abstractmethod
     async def dense_search(self, dense_vector: List[float], top_k: int) -> Coroutine[Any, Any, Any] | None:
         """
@@ -268,7 +242,7 @@ class VectorDataBaseClientInterfaceAsync(ABC):
         Raises:
             NotImplementedError: If not implemented in concrete class.
         """
-        ...
+        raise NotImplementedError
 
     @abstractmethod
     async def batch_queries(self, query_vectors: List[Dict[str, Any]], top_k: int) -> Coroutine[Any, Any, Any] | None:
@@ -286,4 +260,4 @@ class VectorDataBaseClientInterfaceAsync(ABC):
         Raises:
             NotImplementedError: If not implemented in concrete class.
         """
-        ...
+        raise NotImplementedError

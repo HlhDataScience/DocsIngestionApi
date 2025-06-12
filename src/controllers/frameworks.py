@@ -4,12 +4,9 @@ frameworks.py
 FastAPI Framework Implementation
 
 This module provides concrete implementations of the abstract interfaces defined in
-framework_interfaces.py, specifically tailored for the FastAPI web framework. It includes
-router implementations and application framework classes that simplify the process
-of creating and managing FastAPI routes and applications.
+framework_interfaces.py, specifically tailored for the FastAPI web framework.
 
 Classes:
-    FastApiGetPostRouter: FastAPI-specific router implementation for GET and POST routes
     FastApiFramework: FastAPI application framework wrapper with enhanced functionality
 
 Features:
@@ -31,9 +28,10 @@ Version: 1.1.0
 """
 
 from pathlib import Path
-from typing import Tuple, Union, Sequence, List, Optional, Type, NamedTuple, Any
+from typing import List, Optional, Sequence, Tuple, Type, Union
 from typing_extensions import Self
-from fastapi import FastAPI, Depends
+
+from fastapi import Depends, FastAPI
 
 
 from src.abstractions import (

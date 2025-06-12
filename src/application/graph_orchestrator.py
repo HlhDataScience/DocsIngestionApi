@@ -1,18 +1,93 @@
+"""
+graph_orchestrator.py
+This module serves as the main orchestrator for executing the Q&A processing workflow graph.
+It provides the entry point function that initializes the workflow state, compiles the graph,
+and manages the execution of the entire document processing pipeline.
 
-from typing import Any, Coroutine, Callable
+The orchestrator is responsible for:
+- Setting up the initial workflow state with input parameters
+- Compiling the LangGraph StateGraph with optional debugging
+- Executing the complete workflow asynchronously
+- Returning the final processed state
 
-from .graph_constructor import StateDictionary, NodeFunctionsTuple, stategraph_factory_constructor
+This module acts as a bridge between external callers and the internal graph workflow,
+providing a clean interface for running the document-to-Q&A processing pipeline.
 
-async def stategraph_run(input_docs_path: str, factory_fn: Callable, debug:bool = False)-> Coroutine[Any, Any, StateDictionary]:
+Key Dependencies:
+- LangGraph: For state graph compilation and execution
+- graph_constructor: For StateDictionary type definition
 
-    factory_workflow = factory_fn()
+Usage Pattern:
+    result = await stategraph_run(
+        input_docs_path="path/to/document.docx",
+        uncompiled_graph=my_graph,
+        example_docs_path="path/to/examples.json",
+        debug=False
+    )
 
-    compiled_graph = factory_workflow.compile(debug=debug)
+"""
 
-    result = compiled_graph.ainvoke(input_docs_path)
+from typing import Any, Coroutine
 
-    if result["error"] is not None:
-        return result
+from langgraph.graph import StateGraph
+
+from src.models import StateDictionary
+
+async def stategraph_run(
+        input_docs_path: str,
+        uncompiled_graph: StateGraph,
+        example_docs_path: str,
+        debug:bool = False
+)-> Coroutine[Any, Any, StateDictionary]:
+    """
+        Execute the complete Q&A processing workflow graph with the provided inputs.
+
+    This is the main orchestration function that initializes the workflow state,
+    compiles the provided StateGraph, and executes the entire document processing
+    pipeline. It handles the complete flow from document parsing through Q&A
+    generation, evaluation, refinement, and final upload to the vector database.
+
+    Args:
+        input_docs_path (str): Absolute or relative path to the input Word document
+            (.docx file) that will be processed to generate Q&A pairs.
+        uncompiled_graph (StateGraph): The LangGraph StateGraph instance containing
+            all the workflow nodes and edges, ready for compilation and execution.
+        example_docs_path (str): Path to the JSON file containing example Q&A pairs
+            that will be used by the evaluator for quality comparison and guidance.
+        debug (bool, optional): Enable debug mode for graph compilation, which
+            provides additional logging and introspection capabilities. Defaults to False.
+
+    Returns:
+        Coroutine[Any, Any, StateDictionary]: An async coroutine that yields the
+            final StateDictionary containing:
+            - status (str): Final workflow status message
+            - original_document (str): Parsed document text content
+            - original_document_path (str): Input document path (unchanged)
+            - generated_qa (Dict): Initially generated Q&A pairs
+            - examples_qa (List): Loaded example Q&A pairs for reference
+            - examples_path (str): Example document path (unchanged)
+            - evaluator_response (Dict): Final evaluation results
+            - refined_qa (Dict): Final refined Q&A pairs (if refinement occurred)
+            - max_retry (int): Total number of retry iterations performed
+            - error (Dict | None): Any error information if the workflow failed
+    """
+
+
+    initial_state = StateDictionary(
+    status = None,
+    original_document=None,
+    original_document_path= input_docs_path,
+    generated_qa= None,
+    examples_qa= None,
+    examples_path= example_docs_path,
+    evaluator_response= None,
+    refined_qa= None,
+    max_retry= 0,
+    error= None)
+    compiled_graph = uncompiled_graph.compile(debug=debug)
+
+    result = await compiled_graph.ainvoke(input= initial_state)
+
     return result
 
 

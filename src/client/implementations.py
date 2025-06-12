@@ -1,6 +1,5 @@
 """
-client.implementations
-~~~~~~~~~~~~~~~~~~~~~
+implementations.py
 
 Asynchronous implementation of a vector database client for Qdrant using `aiohttp`.
 
@@ -9,32 +8,54 @@ interface for managing vector data in a Qdrant collection. It handles all operat
 asynchronously, including collection creation, document transformation, batch uploads,
 upload verification, and vector search (dense, sparse, and hybrid).
 
+The implementation provides robust error handling, retry mechanisms, and progress tracking
+for large-scale vector operations. It's designed to work efficiently with high-volume
+vector data processing workflows while maintaining data integrity through comprehensive
+verification processes.
+
 Key Technologies:
-    - `aiohttp`: For non-blocking HTTP requests.
-    - `Pydantic`: For input validation.
-    - `tenacity`: For retry logic on failures.
-    - `tqdm`: For progress visualization.
+    - `aiohttp`: For non-blocking HTTP requests to Qdrant server
+    - `Pydantic`: For input validation and data model enforcement
+    - `tenacity`: For retry logic on failures with exponential backoff
+    - `tqdm`: For progress visualization during batch operations
 
 Classes:
-    - QdrantClientAsync: Main client class implementing full async functionality for Qdrant.
+    QdrantClientAsync: Main client class implementing full async functionality for Qdrant
+        vector database operations including CRUD operations, search, and batch processing.
 
 Usage:
     This implementation is used as the core backend client in projects requiring
     efficient and robust interaction with Qdrant from an async Python service.
+    Typical usage involves creating collections, uploading vectorized documents,
+    and performing similarity searches.
 
 Example:
-    from client.implementation import QdrantClientAsync
+    ```python
+    async with aiohttp.ClientSession() as session:
+        client = QdrantClientAsync(
+            data_model=QdrantEntry,
+            collection_name="articles",
+            base_url="http://localhost:6333",
+            session=session,
+            headers={"api-key": "your-key"},
+            dense_size=768
+        )
+        await client.create_collection()
+        await client.upload_documents(documents, batch_size=100)
+        await client.verify_upload()
+        res
 """
 
 
-from typing import Dict, List, Coroutine, Any, Optional, Iterable
 import logging
-import aiohttp
-from pydantic import ValidationError, BaseModel
-from tenacity import stop_after_attempt, retry, wait_exponential
-from tqdm import tqdm   # type: ignore
+from typing import Any, Coroutine, Dict, Iterable, List, Optional
 
-from src.abstractions.client_interfaces import VectorDataBaseClientInterfaceAsync
+import aiohttp
+from pydantic import BaseModel, ValidationError
+from tenacity import retry, stop_after_attempt, wait_exponential
+from tqdm import tqdm  # type: ignore
+
+from src.abstractions import VectorDataBaseClientInterfaceAsync
 
 
 
@@ -55,7 +76,6 @@ class QdrantClientAsync(VectorDataBaseClientInterfaceAsync):
 
     Args:
         data_model (QdrantEntry): Pydantic model for input validation.
-        data_conformer (QdrantConformer): Transforms documents into `QdrantEntry` format.
         collection_name (str): Name of the Qdrant collection to manage.
         base_url (str): URL of the Qdrant server.
         session (aiohttp.ClientSession): Active async session for communication.
@@ -96,7 +116,6 @@ class QdrantClientAsync(VectorDataBaseClientInterfaceAsync):
 
     def __init__(self,
                  data_model: type[BaseModel],
-                 data_conformer: type[BaseModel],
                  collection_name: str,
                  base_url: str,
                  session: aiohttp.ClientSession,
@@ -112,7 +131,6 @@ class QdrantClientAsync(VectorDataBaseClientInterfaceAsync):
         self.__session = session
         self.__headers = headers
         self.__dense_size = dense_size
-        self.__data_conformer = data_conformer
         self.__sample_for_verification_size = sample_for_verification_size
         super().__init__(data_model=data_model)
     async def create_collection(self) -> Coroutine[Any, Any, None] | None:  # type: ignore
@@ -143,8 +161,15 @@ class QdrantClientAsync(VectorDataBaseClientInterfaceAsync):
         }
 
         async with self.__session.put(url=url, json=payload, headers=self.__headers) as response:
+            response.raise_for_status()
             response_data = await response.json()
+
+            if response_data["status"].startswith("Wrong input: Collection"):
+                logging.warning(f"Qdrant collection creation warning: {response_data}")
+
             logging.info(f"Qdrant collection creation response: {response_data}")
+
+
         return None
 
     async def get_collection_info(self) -> Coroutine[Any, Any, Dict[str, Any]]:
@@ -165,21 +190,18 @@ class QdrantClientAsync(VectorDataBaseClientInterfaceAsync):
         url: str = f"{self.__base_url}/collections/{self.__collection_name}"
 
         async with self.__session.get(url=url, headers=self.__headers) as response:
+            response.raise_for_status()
             response_data = await response.json()
+
             logging.info(f"Qdrant collection retrieval response: {response_data}")
             return response_data
-    def _transform_points(self, item: Dict[str, Any]) -> Dict[str, Any]:
+    def _verify_points(self, item: Dict[str, Any]) -> Dict[str, Any]| None:
         """
-        Transform individual items into Qdrant-specific format.
-
-        Validates the input item against the data model. If validation fails,
-        uses the data conformer to transform the item into the correct format
-        and re-validates it.
+        Asserts individual items against Qdrant-specific pydantic BaseModel format.
 
         Args:
-            data_model (VectorDataBaseEntryModel): Data conformer for transformation
-                (Note: This parameter appears unused in current implementation).
-            item (Dict[str, Any]): Individual document/item to transform and validate.
+
+            item (Dict[str, Any]): Individual document/item to validate.
 
         Returns:
             Coroutine[Any, Any, Dict[str, Any]]: A coroutine that when awaited returns
@@ -192,13 +214,12 @@ class QdrantClientAsync(VectorDataBaseClientInterfaceAsync):
         try:
             self.__data_model(**item).model_dump()
             return item
-        except ValidationError:
-            item_conformed = self.__data_conformer(**item).model_dump()
-            print(item_conformed)
-            self.__data_model(**item_conformed).model_dump()
-            return item_conformed  # type: ignore
+        except ValidationError as validation_error:
+            logging.error(f" validation error encounter:\n{validation_error}")
+            raise
 
-    async def _verify_batch(self, point_id) -> Coroutine[Any, Any, Dict[str, Any]]:
+
+    async def _verify_batch(self, point_id: str) -> Dict[str, Any]:
         """
         Verify that a specific point/batch upload completed successfully.
 
@@ -206,21 +227,32 @@ class QdrantClientAsync(VectorDataBaseClientInterfaceAsync):
         it was properly stored and indexed in the Qdrant database.
 
         Args:
-            point_id: Identifier for the specific point to verify.
+            point_id (str): Identifier for the specific point to verify.
 
         Returns:
-            Coroutine[Any, Any, Dict[str, Any]]: A coroutine that when awaited returns
-                the point data if found, or error information if not found.
+            Dict[str, Any]: The point data if found, or error information if not found.
 
         Raises:
             aiohttp.ClientError: If the HTTP request fails.
             Exception: For other verification errors.
         """
         url = f"{self.__base_url}/collections/{self.__collection_name}/points/{point_id}"
+
         async with self.__session.get(url=url, headers=self.__headers) as response:
-            response_data = await response.json()
-            response.raise_for_status()
-            return response_data
+            try:
+                response.raise_for_status()
+                response_data = await response.json()
+                return response_data
+            except aiohttp.ContentTypeError as e:
+                text = await response.text()
+                logging.error(f"Expected JSON but got non-JSON content: {text}")
+                raise
+            except aiohttp.ClientResponseError as e:
+                logging.error(f"Client error while verifying point ID {point_id}: {e}")
+                raise
+            except Exception as e:
+                logging.exception(f"Unexpected error during verification of point ID {point_id}: {e}")
+                raise
 
     @retry(stop=stop_after_attempt(max_attempt_number=3), wait=wait_exponential(multiplier=1, min=1, max=10))
     async def add_points_with_retry(
@@ -255,23 +287,21 @@ class QdrantClientAsync(VectorDataBaseClientInterfaceAsync):
         """
         Upload multiple documents to Qdrant in batches with progress tracking.
 
-        CORRECTED VERSION - fixes the bugs in the original implementation.
+
         """
         responses: List = []
         total_uploaded: int = 0
 
         # Convert to list if it's not already (to handle Iterable input)
         items_list = list(items) if not isinstance(items, list) else items
-
         iter_range = range(0, len(items_list), batch_size)
         iter_range_progressbar = tqdm(iter_range, desc="Uploading", unit="batch")
 
         for i in iter_range_progressbar:
             batch_items = items_list[i: i + batch_size]
             batch_num = (i // batch_size) + 1  # Fixed: was 1 // batch_size
-
             # Fixed: Added await for async _transform_points calls
-            points = [self._transform_points(item=doc) for doc in batch_items]
+            points = [self._verify_points(item=doc) for doc in batch_items]
 
             try:
                 response = await self.add_points_with_retry(points)

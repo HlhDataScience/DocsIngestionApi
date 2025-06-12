@@ -1,4 +1,6 @@
 """
+response_schemas.py
+
 Data schemas for request/response validation using Pydantic.
 
 These schemas define the structure and constraints of the data exchanged
@@ -6,8 +8,9 @@ within the application abstractions (e.g., API payloads, business entities).
 
 Includes:
 - FastApiPostResponse: Schema for processing POST HTTP request responses.
-- FastApiGetResponse: Schema for processing GET HTTP request responses..
+- FastApiGetResponse: Schema for processing GET HTTP request responses.
 """
+
 from typing import Any, Dict
 
 
@@ -43,6 +46,3 @@ class FastApiGetResponse(BaseModel):
     content: Dict[str, Any]
 
 
-class GraphStateResponse(BaseModel):
-    node_name: str
-    response: Dict[str, Any]

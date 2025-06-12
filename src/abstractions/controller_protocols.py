@@ -1,8 +1,11 @@
 """
+controler_protocols.py
+
 Defines protocol-based interfaces for API endpoint functions.
 
 Includes:
-- ApiEndpointProtocolFunction: A runtime-checkable protocol ensuring API endpoints match expected async signature.
+- ApiEndpointProtocolFunction: A runtime-checkable protocol ensuring API endpoints match expected signature.
+- AsyncApiEndpointProtocolFunction: A runtime-checkable asynchronous protocol ensuring API endpoints match expected async signature.
 - protocol_checker: A utility to validate whether a list of functions conforms to the specified protocol.
 """
 

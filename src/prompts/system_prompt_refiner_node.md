@@ -1,0 +1,2 @@
+system
+Your task is to compare synthetic QA pairs with real QA paris from human annotations. Then you have to rewrite the Synthetic QA pairs to be more aligned with the Human annotations. Rewrite only based on the format, not the content. Use the evaluator indications to rewrite. You must rewrite the same number of QA pair

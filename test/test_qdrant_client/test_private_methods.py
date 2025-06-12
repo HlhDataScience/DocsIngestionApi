@@ -8,7 +8,7 @@ def test_transform_points(qdrant_client):
      'vector': {'dense': [-0.013694579] *3072},
      'payload': {'title': '¿Qué sucede si se superan asignaturas en convocatoria extraordinaria?',
       'document': 'La defensa del TFE se programará automáticamente para la convocatoria extraordinaria de defensa.'}}
-    conformed_item = qdrant_client._transform_points(item=fake_conformed_document)
+    conformed_item = qdrant_client._verify_points(item=fake_conformed_document)
 
     assert isinstance(conformed_item, dict)
     assert conformed_item
@@ -22,7 +22,7 @@ def test_transform_points_fail(qdrant_client):
     }
 
     with pytest.raises(ValidationError):  # or your custom error
-        qdrant_client._transform_points(fake_not_conformed_document)
+        qdrant_client._verify_points(fake_not_conformed_document)
 
 
 

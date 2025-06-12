@@ -1,4 +1,6 @@
 """
+validation_schemas.py
+
 Data schemas for request/response validation using Pydantic.
 
 These schemas define the structure and constraints of the data exchanged
@@ -7,8 +9,10 @@ within the application abstractions (e.g., API payloads, business entities).
 Includes:
 - DocxValidator: Schema for processing DOCX-related data.
 - QdrantValidator: Schema for defining vector database entries.
+- QdrantDataPointConformer: Schema for validating data points.
+-
 """
-from typing import List, Dict
+from typing import Any, Dict, List
 from pydantic import BaseModel, field_validator  # type: ignore
 
 
@@ -22,7 +26,7 @@ class QdrantValidator(BaseModel):
     """
     id: str
     vector: Dict[str, List[float]]
-    payload: Dict[str, str]
+    payload: Dict[str, Any]
 
 class DocxValidator(BaseModel):
 
@@ -61,3 +65,12 @@ class DocxValidator(BaseModel):
             raise ValueError("File must be a valid Microsoft Word document.")
         return file_name
 
+class QdrantDataPointConformer(BaseModel):
+    id: str
+    vector: Dict[str, List[float]]
+    payload: Dict[str, Any]
+
+class QdrantBotAnswerConformer(BaseModel):
+    id: str
+    vector: List[float]
+    payload: Dict[str, Any]
