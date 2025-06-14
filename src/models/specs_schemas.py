@@ -36,6 +36,8 @@ from .response_schemas import (
     FastApiGetResponse,
     FastApiPostResponse,
 )
+
+
 class EndpointSpec(NamedTuple):
     """
     FastAPI endpoint specification formating class

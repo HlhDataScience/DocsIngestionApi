@@ -7,15 +7,14 @@ The functions are written in a functional programming style, with lazy evaluatio
 
 import logging
 import os
-from pathlib import Path
 import random
+from pathlib import Path
 from typing import Any, Dict, Generator, List
 
 import aiohttp
-from dotenv import load_dotenv
 import ijson
+from dotenv import load_dotenv
 from langchain_openai import AzureChatOpenAI
-
 
 load_dotenv(dotenv_path=".env.embedding")
 

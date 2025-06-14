@@ -29,19 +29,14 @@ Version: 1.1.0
 
 from pathlib import Path
 from typing import List, Optional, Sequence, Tuple, Type, Union
-from typing_extensions import Self
 
 from fastapi import Depends, FastAPI
-
+from typing_extensions import Self
 
 from src.abstractions import (
     AppInterface,
-   ApiEndPointProtocolFunction)
-
+    ApiEndPointProtocolFunction)
 from src.models import FastApiPostResponse, FastApiGetResponse, EndpointSpec
-
-
-
 
 
 class FastApiFramework(AppInterface):

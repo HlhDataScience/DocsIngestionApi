@@ -13,8 +13,8 @@ Includes:
 -
 """
 from typing import Any, Dict, List
-from pydantic import BaseModel, field_validator  # type: ignore
 
+from pydantic import BaseModel, field_validator  # type: ignore
 
 
 class QdrantValidator(BaseModel):

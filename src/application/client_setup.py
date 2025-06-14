@@ -7,8 +7,8 @@ IMPORTANT: Parameters are loaded dynamically from config.yaml and are not hardco
 
 import os
 
-import yaml # type: ignore
-from dotenv import dotenv_values # type: ignore
+import yaml  # type: ignore
+from dotenv import dotenv_values  # type: ignore
 
 from src.utils import create_engine
 

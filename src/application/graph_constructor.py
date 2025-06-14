@@ -8,7 +8,7 @@ NodeFunctionsTuple to estructure the different steps of the flow.
 
 from typing import Callable, Optional, Tuple
 
-from langgraph.graph import END, StateGraph, START # type: ignore
+from langgraph.graph import END, StateGraph, START  # type: ignore
 
 from src.models import EvalDecision, NodeFunctionsTuple, StateDictionary
 from src.utils import setup_custom_logging

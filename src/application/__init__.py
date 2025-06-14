@@ -10,9 +10,9 @@ This includes:
 - The NamedTuples design as basic data estructure for the Factory pattern function.
 """
 
-from .graph_orchestrator import stategraph_run
-from .graph_nodes import evaluator_router
 from .graph_constructor import self_reflecting_stategraph_factory_constructor
+from .graph_nodes import evaluator_router
+from .graph_orchestrator import stategraph_run
 from .graph_tuple_nodes import NODES_FUNCS
 
 __all__ = [

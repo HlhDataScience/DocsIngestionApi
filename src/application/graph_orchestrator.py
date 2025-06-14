@@ -33,6 +33,7 @@ from langgraph.graph import StateGraph
 
 from src.models import StateDictionary
 
+
 async def stategraph_run(
         input_docs_path: str,
         uncompiled_graph: StateGraph,

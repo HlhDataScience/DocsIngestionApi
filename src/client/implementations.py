@@ -58,7 +58,6 @@ from tqdm import tqdm  # type: ignore
 from src.abstractions import VectorDataBaseClientInterfaceAsync
 
 
-
 class QdrantClientAsync(VectorDataBaseClientInterfaceAsync):
     """
     Asynchronous client for interacting with a Qdrant vector database.

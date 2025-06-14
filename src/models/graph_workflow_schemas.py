@@ -36,6 +36,7 @@ from typing import Any, Callable, Coroutine, Dict, List, Literal, NamedTuple, Op
 from langchain_core.documents import Document
 from pydantic import BaseModel, Field
 
+
 class LlmGenerationResponse(BaseModel):
     response:List[Dict[str, Any]] =Field(..., description="A Generation response with Question as key and answer as value")
 

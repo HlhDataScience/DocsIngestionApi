@@ -1,6 +1,7 @@
+import hashlib
 import secrets
 import string
-import hashlib
+
 API_KEY_LENGTH = 32
 def generate_api_key(length: int = API_KEY_LENGTH) -> str:
     """

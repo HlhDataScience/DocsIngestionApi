@@ -2,13 +2,14 @@
 from typing import Optional
 
 from azure.core.exceptions import HttpResponseError
-from fastapi.exceptions import HTTPException
-from fastapi import status, Security
-from fastapi.security import APIKeyHeader
 from azure.identity import DefaultAzureCredential
 from azure.keyvault.secrets import SecretClient
+from fastapi import status, Security
+from fastapi.exceptions import HTTPException
+from fastapi.security import APIKeyHeader
 
-from .api_keys import generate_api_key, hash_key
+from .api_keys import hash_key
+
 KEY_VAULT_URL = "https://vault.azure.net"
 API_KEY_PREFIX = "api-key-"
 

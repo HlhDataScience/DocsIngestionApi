@@ -47,32 +47,28 @@ Usage:
     route decorators to create HTTP endpoints.
 """
 
-from typing import Annotated, Any, Dict, Optional
+from typing import Annotated, Any, Dict
 
-from fastapi import Query, Security, Depends
-import ijson
+from fastapi import Query
 from pydantic_core import ValidationError
 
 from src.application import (
-self_reflecting_stategraph_factory_constructor,
-stategraph_run,
-NODES_FUNCS,
-evaluator_router
+    self_reflecting_stategraph_factory_constructor,
+    stategraph_run,
+    NODES_FUNCS,
+    evaluator_router
 )
-
 from src.models import (
-DocxValidator,
-QueryParameters,
-StateDictionary,
-ApiKeyGenerationRequest
+    DocxValidator,
+    QueryParameters,
+    StateDictionary,
+    ApiKeyGenerationRequest
 )
 from src.security import (
     API_KEY_PREFIX,
-    api_key_header,
     hash_key,
     generate_api_key,
-    store_key_in_vault,
-    validate_api_key
+    store_key_in_vault
 )
 
 

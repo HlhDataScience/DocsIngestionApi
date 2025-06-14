@@ -25,20 +25,19 @@ allowing the workflow to gracefully handle failures and maintain execution conte
 """
 
 import asyncio
-from itertools import tee
 import os
-from typing import Any, Coroutine, Dict, List, Tuple, Iterator
+from itertools import tee
+from typing import Any, Coroutine, Dict, Tuple, Iterator
 from uuid import uuid4
 
-import aiohttp # type: ignore
-from dotenv import  dotenv_values # type: ignore
-from langchain_community.document_loaders import UnstructuredWordDocumentLoader # type: ignore
-from langchain_core.documents import Document # type: ignore
-from langchain_core.output_parsers import JsonOutputParser # type: ignore
-from langchain_core.prompts import ChatPromptTemplate # type: ignore
-from langchain_openai import AzureChatOpenAI # type: ignore
-from pydantic import BaseModel # type: ignore
-
+import aiohttp  # type: ignore
+from dotenv import dotenv_values  # type: ignore
+from langchain_community.document_loaders import UnstructuredWordDocumentLoader  # type: ignore
+from langchain_core.documents import Document  # type: ignore
+from langchain_core.output_parsers import JsonOutputParser  # type: ignore
+from langchain_core.prompts import ChatPromptTemplate  # type: ignore
+from langchain_openai import AzureChatOpenAI  # type: ignore
+from pydantic import BaseModel  # type: ignore
 
 from src.client import QdrantClientAsync
 from src.models import (
@@ -50,10 +49,6 @@ from src.models import (
 )
 from src.utils import lazy_load_json_qa_sample, load_markdown, setup_custom_logging, encode_document
 from .client_setup import EVALUATOR_ENGINE, GENERATOR_ENGINE, REFINER_ENGINE
-
-
-
-
 
 graph_logger = setup_custom_logging(logger_name="langgraph.log", log_file_path="logs")
 

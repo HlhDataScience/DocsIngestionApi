@@ -13,8 +13,8 @@ Includes:
 
 from typing import Any, Dict
 
-
 from pydantic import BaseModel  # type: ignore
+
 
 class APIInfoResponse(BaseModel):
     """
