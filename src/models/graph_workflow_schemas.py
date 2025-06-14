@@ -43,6 +43,7 @@ class LlmEvaluatorResponse(BaseModel):
     reasoning: Dict[str, Any] = Field(..., description="The reasoning related to the Evaluation category chosen")
     evaluation: Literal["retry", "correct"] = Field(..., description="The evaluation category chosen")
 
+# Not used but may be interessting to have it in case we want back and fordward conversation between refiner and evaluator nodes.
 class LlmRefinerResponse(BaseModel):
     response:List[Dict[str, Any]] =Field(..., description="A Generation response with Question as key and answer as value")
     reasoning: Dict[str, Any] = Field(..., description="The reasoning related to the  changes done in the synthetic QA")

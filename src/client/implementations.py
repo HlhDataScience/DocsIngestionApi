@@ -133,6 +133,7 @@ class QdrantClientAsync(VectorDataBaseClientInterfaceAsync):
         self.__dense_size = dense_size
         self.__sample_for_verification_size = sample_for_verification_size
         super().__init__(data_model=data_model)
+
     async def create_collection(self) -> Coroutine[Any, Any, None] | None:  # type: ignore
         """
         Create a new collection in Qdrant with dense vector configuration.
@@ -153,12 +154,12 @@ class QdrantClientAsync(VectorDataBaseClientInterfaceAsync):
 
         payload: Dict[str, Any] = {
             "vectors": {
-                "dense": {
+
                     "size": self.__dense_size,
                     "distance": "Cosine"
                 }
             }
-        }
+
 
         async with self.__session.put(url=url, json=payload, headers=self.__headers) as response:
             response.raise_for_status()

@@ -50,6 +50,7 @@ Usage:
 from typing import Annotated, Any, Dict, Optional
 
 from fastapi import Query, Security, Depends
+import ijson
 from pydantic_core import ValidationError
 
 from src.application import (
@@ -75,7 +76,7 @@ from src.security import (
 )
 
 
-def dev_get_post_docs_root() -> Dict[str, Any]:
+async def dev_get_post_docs_root() -> Dict[str, Any]:
     """
     Return API information and available endpoints for development environment.
 
@@ -113,7 +114,7 @@ def dev_get_post_docs_root() -> Dict[str, Any]:
 
 
 
-def get_post_docs_root() -> Dict[str, Any]:
+async def get_post_docs_root() -> Dict[str, Any]:
     """
 
     Return API information and available endpoints for production environment.
@@ -151,9 +152,10 @@ def get_post_docs_root() -> Dict[str, Any]:
         }
     }
 
-def get_uploaded_docs_info(query_parameters: Annotated[QueryParameters, Query()], valid_key: str = Depends(validate_api_key))-> Dict[str, Any]:
+async def get_uploaded_docs_info(query_parameters: Annotated[QueryParameters, Query()], #valid_key: str = Depends(validate_api_key)
+                           )-> Dict[str, Any]:
     """
-        Retrieve information about previously uploaded documents based on query parameters.
+    Retrieve information about previously uploaded documents based on query parameters.
 
     Fetches metadata and details about documents that have been uploaded and processed
     through the document ingestion pipeline. This endpoint allows users to query
@@ -190,7 +192,10 @@ def get_uploaded_docs_info(query_parameters: Annotated[QueryParameters, Query()]
     """
     ...
 
-async def upload_docx(input_docs_path: str, valid_key: str = Depends(validate_api_key)) -> Dict[str, Any]:
+
+async def upload_docx(input_docs_path: str,
+                      #valid_key: str = Depends(validate_api_key) #uncommnet for production
+                      ) -> Dict[str, Any]:
     """
     Process and upload Word documents to the Qdrant knowledge base asynchronously.
 
@@ -242,7 +247,6 @@ async def upload_docx(input_docs_path: str, valid_key: str = Depends(validate_ap
     Raises:
         ValidationError: Caught internally and returned as HTTP 400 response
         Exception: Other processing errors are propagated to the caller
-        :param valid_key:
     """
     try:
 
@@ -253,7 +257,7 @@ async def upload_docx(input_docs_path: str, valid_key: str = Depends(validate_ap
                      "message": f"{ve}"}
 
         }
-    examples_docs_path = "benchmark/benchmark_files/original_export/qdrant_data_export.json"
+    examples_docs_path = "assets/real_user_questions/qdrant_data_export.json"
     uncompiled_graph = self_reflecting_stategraph_factory_constructor(state_dict=StateDictionary,
                                                                       node_functions=NODES_FUNCS,
                                                                       router_function=evaluator_router)
@@ -263,15 +267,15 @@ async def upload_docx(input_docs_path: str, valid_key: str = Depends(validate_ap
         example_docs_path=examples_docs_path
     )
 
-    return {"response" :
-                    {"code": 200,
-                     "message": f"Successfully transformed and uploaded document {input_docs_path} to Qdrant Knowledge Database.",
-                     "content_details": result}
-            }
+    return {
+        "status_code": 200,
+        "message": "Successfully transformed and uploaded documents...",
+        "content": result
+    }
 
 async def generate_api_key_point(
         request: ApiKeyGenerationRequest,
-        # admin_key: Optional[str] = Security(api_key_header)
+        # admin_key: Optional[str] = Security(api_key_header) # Uncomment this in case you whish to get ready for testing to release in production.
 )-> Dict[str, Any]:
     """
     Public endpoint to generate new api keys protected by admin key if configured. It generates and stores the api_keys.

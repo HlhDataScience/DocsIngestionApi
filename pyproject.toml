@@ -10,6 +10,7 @@ dependencies = [
     "dotenv>=0.9.9", # manejo secretos
     "fastapi[standard]>=0.115.12", # implementación concreta de las abstracciones
     "fastexcel>=0.14.0",
+    "ijson>=3.4.0",
     "langchain>=0.3.25", #llm app_framework framework para diseñar el extractor de q&a en el word
     "langchain-community>=0.3.24",
     "langchain-openai>=0.3.21",

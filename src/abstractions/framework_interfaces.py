@@ -36,7 +36,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, List, Optional, Sequence, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel # type: ignore
 
 from src.abstractions.controller_protocols import ApiEndPointProtocolFunction
 

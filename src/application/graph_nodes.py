@@ -24,18 +24,20 @@ All nodes implement comprehensive error handling with state preservation,
 allowing the workflow to gracefully handle failures and maintain execution context.
 """
 
-
+import asyncio
+from itertools import tee
 import os
-from typing import Any, Coroutine, Dict, List, Tuple
+from typing import Any, Coroutine, Dict, List, Tuple, Iterator
+from uuid import uuid4
 
-import aiohttp
-from dotenv import load_dotenv
-from langchain_community.document_loaders import UnstructuredWordDocumentLoader
-from langchain_core.documents import Document
-from langchain_core.output_parsers import JsonOutputParser
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_openai import AzureChatOpenAI
-from pydantic import BaseModel
+import aiohttp # type: ignore
+from dotenv import  dotenv_values # type: ignore
+from langchain_community.document_loaders import UnstructuredWordDocumentLoader # type: ignore
+from langchain_core.documents import Document # type: ignore
+from langchain_core.output_parsers import JsonOutputParser # type: ignore
+from langchain_core.prompts import ChatPromptTemplate # type: ignore
+from langchain_openai import AzureChatOpenAI # type: ignore
+from pydantic import BaseModel # type: ignore
 
 
 from src.client import QdrantClientAsync
@@ -43,14 +45,20 @@ from src.models import (
     EvalDecision,
     LlmEvaluatorResponse,
     StateDictionary,
-    QdrantValidator,
+    QdrantBotAnswerConformer,
     LlmGenerationResponse
 )
-from src.utils import load_json_qa_sample, load_markdown, setup_custom_logging
+from src.utils import lazy_load_json_qa_sample, load_markdown, setup_custom_logging, encode_document
 from .client_setup import EVALUATOR_ENGINE, GENERATOR_ENGINE, REFINER_ENGINE
 
+
+
+
+
 graph_logger = setup_custom_logging(logger_name="langgraph.log", log_file_path="logs")
-def parse_wordformat_document(state: StateDictionary)->StateDictionary:
+
+
+async def parse_wordformat_document(state: StateDictionary)->StateDictionary:
     """
     Parse a Word document (.docx) and extract its text content.
 
@@ -81,9 +89,9 @@ def parse_wordformat_document(state: StateDictionary)->StateDictionary:
     if state["error"] is not None:
         graph_logger.error(f"Error encountered in the node within the function {parse_wordformat_document.__name__}\n\n Details: {state["error"]}")
         return state
-    loader_instance = UnstructuredWordDocumentLoader(state["original_document_path"])
+    loader_instance =  UnstructuredWordDocumentLoader(state["original_document_path"])
 
-    docs: List[Document] = loader_instance.lazy_load()
+    docs: Iterator[Document] = loader_instance.lazy_load()
 
     state["status"]  = "Parsing docx file step completed"
     state["original_document"] = "\n".join(d.page_content for d in docs )
@@ -98,7 +106,7 @@ async def llm_call(
         user_prompt: Tuple[str, ...],
         invoke_args: Dict[str, Any],
         json_parser: BaseModel = LlmGenerationResponse,
-) -> Coroutine[None, None, Dict[str, Any] | None]:
+) -> Dict[str, str] | Coroutine[Any, Any, Dict[str, str]] | None:
     """
     Execute a standardized LLM call using prompt chaining in LangChain.
 
@@ -131,7 +139,7 @@ async def llm_call(
     """
     if state["error"] is not None:
         graph_logger.error(f"Error encountered in the node within the internal function {llm_call.__name__}\n\n Details: {state["error"]}")
-        return state
+        return state  # type: ignore
 
     llm = llm_engine
     parser = JsonOutputParser(pydantic_object=json_parser)
@@ -185,14 +193,14 @@ async def qa_generator_node(state:StateDictionary)->StateDictionary | None:
 
     system_prompt =tuple("".join(
         load_markdown(
-            directory_path="src/prompts",
+            directory_path="prompts",
             markdown_file_name="system_prompt_generator_node"
         )
     ).split("\n"))
 
     user_prompt = tuple( "".join(
         load_markdown(
-            directory_path="src/prompts",
+            directory_path="prompts",
             markdown_file_name="user_prompt_generator_node"
         )
     ).split("\n"))
@@ -203,7 +211,7 @@ async def qa_generator_node(state:StateDictionary)->StateDictionary | None:
         "format_instructions": parser.get_format_instructions()
     }
     try:
-        result: Dict[str, Any]  = await llm_call(
+        result:Dict[str, str] | Coroutine[Any, Any, Dict[str, str]] | None = await llm_call(
             state=state,
             llm_engine=GENERATOR_ENGINE,
             system_prompt=system_prompt,
@@ -228,7 +236,7 @@ async def qa_generator_node(state:StateDictionary)->StateDictionary | None:
     return state
 
 
-async def evaluator_node(state: StateDictionary)->Coroutine[None,None, Dict[str, Any]| None]:
+async def evaluator_node(state: StateDictionary)->StateDictionary| None:
     """
     Evaluate the quality of generated question-answer pairs using an LLM evaluator.
 
@@ -274,25 +282,25 @@ async def evaluator_node(state: StateDictionary)->Coroutine[None,None, Dict[str,
     if state["examples_path"] is None:
         json_path = "benchmark/benchmark_files/original_export/qdrant_data_export.json"
         unnecessary = {"id", "category"}
-        raw_examples = load_json_qa_sample(json_path)
+        raw_examples = lazy_load_json_qa_sample(json_path)
         conformed_examples = [{k: v for k, v in raw_example.items() if k not in unnecessary} for raw_example in raw_examples]
         state["examples_qa"] = conformed_examples
 
     unnecessary = {"id", "category"}
-    raw_examples = load_json_qa_sample(state["examples_path"])
+    raw_examples = lazy_load_json_qa_sample(state["examples_path"])  # type: ignore
     conformed_examples = [{k:v for k, v in raw_example.items() if k not in unnecessary} for raw_example in raw_examples]
     state["examples_qa"] = conformed_examples
 
     system_prompt =tuple("".join(
         load_markdown(
-            directory_path="src/prompts",
+            directory_path="prompts",
             markdown_file_name="system_prompt_evaluator_node"
         )
     ).split("\n"))
 
     user_prompt = tuple( "".join(
         load_markdown(
-            directory_path="src/prompts",
+            directory_path="prompts",
             markdown_file_name="user_prompt_evaluator_node"
         )
     ).split("\n"))
@@ -335,7 +343,7 @@ async def evaluator_node(state: StateDictionary)->Coroutine[None,None, Dict[str,
     graph_logger.info(f"Evaluator qa step completed. Pass number {state["max_retry"]}")
     return state
 
-def evaluator_router(state:StateDictionary)-> EvalDecision | StateDictionary:
+async def evaluator_router(state:StateDictionary)-> EvalDecision | StateDictionary:
     """
     Route workflow execution based on evaluator decision and retry logic.
 
@@ -427,14 +435,14 @@ async def qa_refiner_node(state:StateDictionary)-> Coroutine[None,None, Dict[str
 
     system_prompt =tuple("".join(
         load_markdown(
-            directory_path="src/prompts",
+            directory_path="prompts",
             markdown_file_name="system_prompt_refiner_node"
         )
     ).split("\n"))
 
     user_prompt = tuple( "".join(
         load_markdown(
-            directory_path="src/prompts",
+            directory_path="prompts",
             markdown_file_name="user_prompt_refiner_node"
         )
     ).split("\n"))
@@ -481,12 +489,7 @@ async def qa_refiner_node(state:StateDictionary)-> Coroutine[None,None, Dict[str
 
 
 
-load_dotenv(dotenv_path=".env.qdrant")
 
-QDRANT_API_KEY= os.getenv("QDRANT_API_KEY")
-URL= os.getenv("URL")
-ORIGINAL_COLLECTION= os.getenv("ORIGINAL_COLLECTION")
-SYNTHETIC_DOCS_COLLECTION= os.getenv("SYNTHETIC_DOCS_COLLECTION")
 
 async def upload_points_to_qdrant(state: StateDictionary)->Coroutine[None,None, Dict[str, Any]| None]:
     """
@@ -535,20 +538,76 @@ async def upload_points_to_qdrant(state: StateDictionary)->Coroutine[None,None, 
         - Logs success/failure messages
     """
 
+
     if state["error"] is not None:
         graph_logger.error(f"Error encountered in the node within the function {upload_points_to_qdrant.__name__}\n\n Details: {state["error"]}")
         return state
+    DOTENV_PATH = "src/application/.env.qdrant"
+    env_vars = dotenv_values(DOTENV_PATH)
+
+    # Ensure all required environment variables are injected into os.environ
+    required_keys = {
+        "QDRANT_API_KEY",
+        "URL",
+        "SYNTHETIC_DOCS_COLLECTION"
+
+    }
+
+    for key in required_keys:
+        value = env_vars.get(key)
+        if not value:
+            raise ValueError(f"Missing required environment variable: {key}")
+        os.environ[key] = value
+
+    if isinstance(state["refined_qa"], str):
+        graph_logger.warning(f"{state['refined_qa']} is a runtime string, converting to dictionary format")
+        import json
+        state["refined_qa"] = json.loads(state["refined_qa"])
+
+    text_generator = (d["text"] for d in state["refined_qa"]["response"])
+    answer_generator = (d["answer"] for d in state["refined_qa"]["response"])
+
+    original_generator = ({
+        "text": text,
+        "answer" : answer,
+        "category": "general",
+        "metadata" : {
+            "source" : state["original_document_path"]
+        }
+    } for text, answer in zip(text_generator, answer_generator))
+
+    prepared_collection_generator_for_encoding, prepared_collection_generator_for_uploading = tee(original_generator)
+    docs_to_encode = [doc["text"] for doc in prepared_collection_generator_for_encoding]
+    encoded_docs = await asyncio.gather(*(encode_document(doc= doc) for doc in docs_to_encode))
+    graph_logger.info("All documents encoded")
+    formated_collection = []
+    for vector, upload_dict in zip(encoded_docs, prepared_collection_generator_for_uploading):
+        upload_dict["vector"] = vector
+        formated_collection.append(upload_dict)
+    conformed_collection = []
+    for dic in formated_collection:
+        conformed_collection.append({
+
+            "id": str(uuid4()),
+            "vector" : dic["vector"],
+            "payload": {
+                "text": dic["text"],
+                "answer" : dic["answer"],
+                "category" : dic["category"],
+                "additional_metadata" : dic["metadata"]
+                }
+            })
 
     async with aiohttp.ClientSession() as session:
-        client = QdrantClientAsync(data_model=QdrantValidator, collection_name=SYNTHETIC_DOCS_COLLECTION, base_url=URL,
+        client = QdrantClientAsync(data_model=QdrantBotAnswerConformer, collection_name=env_vars["SYNTHETIC_DOCS_COLLECTION"], base_url=env_vars["URL"],
                                    session=session, headers={
                 "Content-Type": "application/json",
-                "api-key": QDRANT_API_KEY
+                "api-key": env_vars["QDRANT_API_KEY"]
             }, dense_size=3072)
         try:
             await client.create_collection()
 
-            await client.upload_documents(items=state["refined_qa"], batch_size=50)
+            await client.upload_documents(items=conformed_collection, batch_size=50)
             state["status"] = "successfully uploaded documents"
 
         except Exception as e:
@@ -561,4 +620,5 @@ async def upload_points_to_qdrant(state: StateDictionary)->Coroutine[None,None, 
             return state
         state["status"] = "successfully uploaded documents"
         graph_logger.info("Successfully uploaded documents")
+        # A PARTIR DE AQUÍ HAY QUE HACER LA LÓGICA DE GUARDADO
         return state

@@ -28,7 +28,7 @@ Note:
 from abc import ABC, abstractmethod
 from typing import Any, Coroutine, Dict, Iterable, List
 
-from pydantic import BaseModel
+from pydantic import BaseModel  # type: ignore
 
 
 class VectorDataBaseClientInterfaceAsync(ABC):

@@ -21,7 +21,7 @@ def setup_custom_logging(log_file_path: str, logger_name: str) -> logging.Logger
     Sets up application-specific logging.
     :param logger_name: the custom graph_logger name.
     :param log_file_path: Path to the log file.
-    :return: Configured graph_logger object.
+    :return: Configured custom_logger object.
     """
     logger = logging.getLogger(name=logger_name)
     logger.setLevel(logging.INFO)
