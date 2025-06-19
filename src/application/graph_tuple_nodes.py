@@ -49,6 +49,7 @@ from .graph_nodes import (
     qa_generator_node,
     evaluator_node,
     qa_refiner_node,
+    conform_points_to_qdrant,
     upload_points_to_qdrant
 )
 
@@ -70,8 +71,8 @@ NODES_FUNCS = (
         edge_type="conditional",  # Changed to conditional since evaluator_router decides the path
         conditional_mapping={
             EvalDecision.RETRY: "qa_refiner",
-            EvalDecision.CORRECT: "qdrant_uploader",
-            EvalDecision.MAX_RETRY: "qdrant_uploader",
+            EvalDecision.CORRECT: "conform_points_to_qdrant",
+            EvalDecision.MAX_RETRY: "conform_points_to_qdrant",
         }
     ),
     NodeFunctionsTuple(
@@ -79,6 +80,11 @@ NODES_FUNCS = (
         node_name="qa_refiner",
         edge_type="directed",
         loop_back_to="evaluator"  # This creates the loop back to evaluator
+    ),
+    NodeFunctionsTuple(
+        function=conform_points_to_qdrant,
+        node_name="conform_points_to_qdrant",
+        edge_type="directed",
     ),
     NodeFunctionsTuple(
         function=upload_points_to_qdrant,

@@ -4,7 +4,8 @@ from .utilities import (
     lazy_load_json_qa_sample,
     load_markdown,
     create_engine,
-    encode_document
+    encode_document,
+    save_conformed_points_for_internal_search
 )
 
 __all__ = [
@@ -13,5 +14,6 @@ __all__ = [
     "lazy_load_json_qa_sample",
     "load_markdown",
     "create_engine",
-    "encode_document"
+    "encode_document",
+    "save_conformed_points_for_internal_search",
 ]

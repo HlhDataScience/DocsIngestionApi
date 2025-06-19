@@ -49,7 +49,8 @@ Usage:
 
 from typing import Annotated, Any, Dict
 
-from fastapi import Query
+import json
+from fastapi import Query, Depends
 from pydantic_core import ValidationError
 
 from src.application import (
@@ -60,7 +61,8 @@ from src.application import (
 )
 from src.models import (
     DocxValidator,
-    QueryParameters,
+    SearchQueryParameters,
+    UploadDocsParameters,
     StateDictionary,
     ApiKeyGenerationRequest
 )
@@ -84,7 +86,7 @@ async def dev_get_post_docs_root() -> Dict[str, Any]:
     The response includes:
     - Service welcome message in Spanish
     - Service description explaining document ingestion functionality
-    - Development version identifier (0.1.0)
+    - Development version identifier
     - Complete endpoint documentation with descriptions
 
     Returns:
@@ -98,7 +100,7 @@ async def dev_get_post_docs_root() -> Dict[str, Any]:
     return {
         "message" : "Bienvenido a DocumentalIngestAPI",
         "description" : "Servicio de Ingesta Documental para Bases de Conocimiento",
-        "version" : "DEV VERSION 1.9",
+        "version" : "DEV VERSION 2.0",
         "endpoints" : {
             "/generate-key" : "Endpoint para generar nuevas claves API, protegido por una clave de administrador si está configurada. Genera y almacena las claves API.",
             "/search" : "REQUIERE API KEY. Recupera información sobre los documentos previamente subidos en función de los parámetros de consulta.",
@@ -107,8 +109,6 @@ async def dev_get_post_docs_root() -> Dict[str, Any]:
             "/openapi.json": "Esquema OpenAPI.",
         }
     }
-
-
 
 async def get_post_docs_root() -> Dict[str, Any]:
     """
@@ -138,7 +138,7 @@ async def get_post_docs_root() -> Dict[str, Any]:
     return {
         "message" : "Bienvenido a DocumentalIngestAPI",
         "description" : "Servicio de Ingesta Documental para Bases de Conocimiento",
-        "version" : "1.0.0",
+        "version" : "1.0",
         "endpoints" : {
             "/generate-key" : "Endpoint para generar nuevas claves API. Genera y almacena las claves API.",
             "/search" : "REQUIERE API KEY. Recupera información sobre los documentos previamente subidos en función de los parámetros de consulta.",
@@ -148,48 +148,63 @@ async def get_post_docs_root() -> Dict[str, Any]:
         }
     }
 
-async def get_uploaded_docs_info(query_parameters: Annotated[QueryParameters, Query()], #valid_key: str = Depends(validate_api_key)
-                           )-> Dict[str, Any]:
+async def get_uploaded_docs_info(
+    query_parameters: Annotated[SearchQueryParameters, Query()]
+) -> Dict[str, Any]:
     """
     Retrieve information about previously uploaded documents based on query parameters.
-
-    Fetches metadata and details about documents that have been uploaded and processed
-    through the document ingestion pipeline. This endpoint allows users to query
-    and retrieve information about their uploaded documents using various filter
-    and search parameters.
-
-    The function accepts query parameters through FastAPI's Query dependency injection
-    to enable flexible filtering and searching of uploaded document information.
-    Parameters are validated using the QueryParameters Pydantic model to ensure
-    proper data types and required fields.
-
-    Args:
-        query_parameters (Annotated[QueryParameters, Query()]): Query parameters
-            for filtering and searching uploaded documents. The parameters are
-            automatically validated and parsed by FastAPI using the QueryParameters
-            model. Supported parameters may include:
-            - Document filters (date range, document type, etc.)
-            - Search terms for document content or metadata
-            - Pagination parameters (limit, offset)
-            - Sorting options (by date, name, etc.)
-
-    Returns:
-        Dict[str, Any]: A dictionary containing information about uploaded documents
-            that match the query parameters. The structure typically includes:
-            - Document metadata (names, upload dates, processing status)
-            - Search results with relevance scores
-            - Pagination information
-            - Total count of matching documents
-
-    Raises:
-        ValidationError: If query parameters don't conform to QueryParameters model
-        Exception: For other errors during document information retrieval
-
     """
-    ...
+    matched_docs = []
 
+    try:
+        with open("assets/processed_docs/processed_documents.jsonl", "r") as f:
+            for index, line in enumerate(f):
+                item = json.loads(line)
+                item["index_id"] = index + 1
+
+                if (
+                    item.get("upload_author", {})== str(query_parameters.upload_author) and
+                    item.get("doc_name") == query_parameters.doc_name
+                ):
+                    matched_docs.append(item)
+
+        if not matched_docs:
+            return {
+                "status_code": 404,
+                "message": "No documents were found under those filters.",
+                "content": {}
+            }
+
+        # Sort by the selected field
+        sorted_docs = sorted(
+            matched_docs,
+            key=lambda x: x.get(query_parameters.order_by)
+        )
+
+        if query_parameters.index > len(sorted_docs):
+            return {
+                "status_code": 404,
+                "message": "Index out of range.",
+                "content": {}
+            }
+
+        selected_doc = sorted_docs[query_parameters.index - 1]
+
+        return {
+            "status_code": 200,
+            "message": "Success",
+            "content": selected_doc
+        }
+
+    except Exception as e:
+        return {
+            "status_code": 500,
+            "message": f"Internal server error: {str(e)}",
+            "content": {}
+        }
 
 async def upload_docx(input_docs_path: str,
+                      query_parameters: UploadDocsParameters = Depends(), # This is because it has nested field that we use, so we use it insteaf of Annotated[UploadDocsParameters, Query()]
                       #valid_key: str = Depends(validate_api_key) #uncommnet for production
                       ) -> Dict[str, Any]:
     """
@@ -220,6 +235,7 @@ async def upload_docx(input_docs_path: str,
             The path can be absolute or relative to the application's working directory.
 
             Example: "/path/to/documents/contract.docx" or "uploads/report.docx"
+        query_parameters: Query parameters to use when processing documents.
 
     Returns:
         Dict[str, Any]: A structured response dictionary containing:
@@ -248,19 +264,33 @@ async def upload_docx(input_docs_path: str,
 
         DocxValidator(file_name=input_docs_path)
     except ValidationError as ve:
-        return {"response" :
-                    {"code": 400,
-                     "message": f"{ve}"}
+        return {"status" : 400,
+                "message": str(ve),
+                "content": {}
 
         }
     examples_docs_path = "assets/real_user_questions/qdrant_data_export.json"
+    initial_state = StateDictionary(
+        status=None,
+        upload_author=query_parameters.upload_author,
+        doc_name=query_parameters.doc_name,
+        updated_collection=query_parameters.update_collection,
+        original_document=None,
+        original_document_path=input_docs_path,
+        generated_qa=None,
+        examples_qa=None,
+        examples_path=examples_docs_path,
+        evaluator_response=None,
+        refined_qa=None,
+        max_retry=0,
+        error=None)
+
     uncompiled_graph = self_reflecting_stategraph_factory_constructor(state_dict=StateDictionary,
                                                                       node_functions=NODES_FUNCS,
-                                                                      router_function=evaluator_router)
+                                                          router_function=evaluator_router)
     result = await stategraph_run(
-        input_docs_path=input_docs_path,
+        initial_state=initial_state,
         uncompiled_graph=uncompiled_graph,
-        example_docs_path=examples_docs_path
     )
 
     return {
@@ -284,7 +314,7 @@ async def generate_api_key_point(
 
     raw_key = generate_api_key()
     hashed_key = hash_key(raw_key)
-    key_id = F"{API_KEY_PREFIX}{hashed_key}"
+    key_id = f"{API_KEY_PREFIX}{hashed_key}"
 
     await store_key_in_vault(
         key_id=key_id,

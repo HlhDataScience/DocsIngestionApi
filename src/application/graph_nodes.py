@@ -11,7 +11,8 @@ The workflow follows this pattern:
 2. Generate Q&A pairs -> Use LLM to create questions and answers
 3. Evaluate Q&A quality -> Use LLM evaluator to assess quality
 4. Refine if needed -> Improve Q&A pairs based on evaluation feedback
-5. Upload to Qdrant -> Store final Q&A pairs in vector database
+5. Conform to Qdrant -> Prepares the Q&A to be uploaded into Qdrant format
+6. Upload to Qdrant -> Store final Q&A pairs in vector database
 
 Key Dependencies:
 - LangChain: Document processing and LLM interactions
@@ -47,7 +48,13 @@ from src.models import (
     QdrantBotAnswerConformer,
     LlmGenerationResponse
 )
-from src.utils import lazy_load_json_qa_sample, load_markdown, setup_custom_logging, encode_document
+from src.utils import (
+    lazy_load_json_qa_sample,
+    load_markdown,
+    setup_custom_logging,
+    encode_document,
+    save_conformed_points_for_internal_search
+)
 from .client_setup import EVALUATOR_ENGINE, GENERATOR_ENGINE, REFINER_ENGINE
 
 graph_logger = setup_custom_logging(logger_name="langgraph.log", log_file_path="logs")
@@ -72,13 +79,6 @@ async def parse_wordformat_document(state: StateDictionary)->StateDictionary:
             - status (str): Success message or error details
             - error (dict | None): Error information if parsing failed
 
-    Side Effects:
-        - Logs success/error messages
-        - Modifies the input state dictionary in-place
-
-    Error Handling:
-        - Returns early if state already contains an error
-        - Logs detailed error information for debugging
     """
 
     if state["error"] is not None:
@@ -92,7 +92,6 @@ async def parse_wordformat_document(state: StateDictionary)->StateDictionary:
     state["original_document"] = "\n".join(d.page_content for d in docs )
     graph_logger.info("Parsing docx file step completed for parsing documents step. ")
     return state
-
 
 async def llm_call(
         state: StateDictionary,
@@ -174,10 +173,6 @@ async def qa_generator_node(state:StateDictionary)->StateDictionary | None:
         - Returns early if state contains existing errors
         - Catches and logs LLM invocation exceptions
         - Sets error status and details in state on failure
-
-    Side Effects:
-        - Logs progress and completion messages
-        - Modifies state dictionary in-place
     """
 
     if state["error"] is not None:
@@ -229,7 +224,6 @@ async def qa_generator_node(state:StateDictionary)->StateDictionary | None:
     state["generated_qa"] = result
     graph_logger.info("Generator qa step completed")
     return state
-
 
 async def evaluator_node(state: StateDictionary)->StateDictionary| None:
     """
@@ -481,9 +475,74 @@ async def qa_refiner_node(state:StateDictionary)-> Coroutine[None,None, Dict[str
     graph_logger.info(f"Refiner_qa step completed in the iteration number {state["max_retry"]}")
     return state
 
+async def conform_points_to_qdrant(state: StateDictionary)-> Coroutine[Any, Any, StateDictionary| None]:
+    """
+    Conforms the data generated in the LLM processing into a Qdrant format.
+    Args:
+        state (StateDictionary): State dictionary
 
+    Args:
+        state (StateDictionary): Workflow state containing:
+            - refined_qa (Dict[str, Any]): Final Q&A pairs to conform.
+            - error (dict | None): Any existing error state
 
+    Returns:
+        Coroutine[None,None, Dict[str, Any]| None]: Async coroutine that yields
+            updated state containing:
+            - status (str): Success/error status message
+            - error (dict | None): Error details if upload failed
+    """
+    # Checking the instance, as the llm returns a pure string sometimes. This step conforms into the expected dict type.
+    if isinstance(state["refined_qa"], str):
+        graph_logger.warning(f"{state['refined_qa']} is a runtime string, converting to dictionary format")
+        import json
+        state["refined_qa"] = json.loads(state["refined_qa"])
 
+    # Creating the lazy loaders (generators)
+    text_generator = (d["text"] for d in state["refined_qa"]["response"])
+    answer_generator = (d["answer"] for d in state["refined_qa"]["response"])
+
+    original_generator = ({
+        "text": text,
+        "answer" : answer,
+        "category": "general",
+        "metadata" : {
+            "source" : state["original_document_path"]
+        }
+    } for text, answer in zip(text_generator, answer_generator))
+
+    # We prepare 2 more generators to use in the encoding and the in the upload
+    prepared_collection_generator_for_encoding, prepared_collection_generator_for_uploading = tee(original_generator)
+    docs_to_encode = [doc["text"] for doc in prepared_collection_generator_for_encoding]
+    encoded_docs = await asyncio.gather(*(encode_document(doc= doc) for doc in docs_to_encode))
+    graph_logger.info("All documents encoded")
+
+    # Here we format the collection into the expected estructure
+    formated_collection = []
+    for vector, upload_dict in zip(encoded_docs, prepared_collection_generator_for_uploading):
+        upload_dict["vector"] = vector
+        formated_collection.append(upload_dict)
+    conformed_collection = []
+    for dic in formated_collection:
+        conformed_collection.append({
+
+            "id": str(uuid4()),
+            "vector" : dic["vector"],
+            "payload": {
+                "text": dic["text"],
+                "answer" : dic["answer"],
+                "category" : dic["category"],
+                "additional_metadata" : dic["metadata"]
+                }
+            })
+    state["refined_qa"] = conformed_collection
+
+    # Here, before return, we save the data in case anything happens, we have the log.
+
+    await save_conformed_points_for_internal_search(state=state)
+    graph_logger.info("Conformed points saved for internal search")
+
+    return state
 
 
 async def upload_points_to_qdrant(state: StateDictionary)->Coroutine[None,None, Dict[str, Any]| None]:
@@ -554,44 +613,7 @@ async def upload_points_to_qdrant(state: StateDictionary)->Coroutine[None,None, 
             raise ValueError(f"Missing required environment variable: {key}")
         os.environ[key] = value
 
-    if isinstance(state["refined_qa"], str):
-        graph_logger.warning(f"{state['refined_qa']} is a runtime string, converting to dictionary format")
-        import json
-        state["refined_qa"] = json.loads(state["refined_qa"])
 
-    text_generator = (d["text"] for d in state["refined_qa"]["response"])
-    answer_generator = (d["answer"] for d in state["refined_qa"]["response"])
-
-    original_generator = ({
-        "text": text,
-        "answer" : answer,
-        "category": "general",
-        "metadata" : {
-            "source" : state["original_document_path"]
-        }
-    } for text, answer in zip(text_generator, answer_generator))
-
-    prepared_collection_generator_for_encoding, prepared_collection_generator_for_uploading = tee(original_generator)
-    docs_to_encode = [doc["text"] for doc in prepared_collection_generator_for_encoding]
-    encoded_docs = await asyncio.gather(*(encode_document(doc= doc) for doc in docs_to_encode))
-    graph_logger.info("All documents encoded")
-    formated_collection = []
-    for vector, upload_dict in zip(encoded_docs, prepared_collection_generator_for_uploading):
-        upload_dict["vector"] = vector
-        formated_collection.append(upload_dict)
-    conformed_collection = []
-    for dic in formated_collection:
-        conformed_collection.append({
-
-            "id": str(uuid4()),
-            "vector" : dic["vector"],
-            "payload": {
-                "text": dic["text"],
-                "answer" : dic["answer"],
-                "category" : dic["category"],
-                "additional_metadata" : dic["metadata"]
-                }
-            })
 
     async with aiohttp.ClientSession() as session:
         client = QdrantClientAsync(data_model=QdrantBotAnswerConformer, collection_name=env_vars["SYNTHETIC_DOCS_COLLECTION"], base_url=env_vars["URL"],
@@ -600,10 +622,11 @@ async def upload_points_to_qdrant(state: StateDictionary)->Coroutine[None,None, 
                 "api-key": env_vars["QDRANT_API_KEY"]
             }, dense_size=3072)
         try:
-            await client.create_collection()
-
-            await client.upload_documents(items=conformed_collection, batch_size=50)
-            state["status"] = "successfully uploaded documents"
+            if state["updated_collection"]:
+                ... # Adding the logic later
+            else:
+                await client.upload_documents(items=state["refined_qa"], batch_size=50)
+                state["status"] = "successfully uploaded documents"
 
         except Exception as e:
             state["status"] = "error uploading documents to Qdrant collection"
@@ -615,5 +638,5 @@ async def upload_points_to_qdrant(state: StateDictionary)->Coroutine[None,None, 
             return state
         state["status"] = "successfully uploaded documents"
         graph_logger.info("Successfully uploaded documents")
-        # A PARTIR DE AQUÍ HAY QUE HACER LA LÓGICA DE GUARDADO
+
         return state

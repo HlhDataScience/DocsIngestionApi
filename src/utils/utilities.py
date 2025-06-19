@@ -4,17 +4,19 @@ utilities.py
 This module aims to provide several functionalities that are broader on scope than the rest of the source code.
 The functions are written in a functional programming style, with lazy evaluation and performance complaince in mind.
 """
-
+import json
 import logging
 import os
 import random
 from pathlib import Path
-from typing import Any, Dict, Generator, List
+from typing import Any,Coroutine, Dict, Generator, List
 
 import aiohttp
 import ijson
 from dotenv import load_dotenv
 from langchain_openai import AzureChatOpenAI
+
+from src.models import StateDictionary
 
 load_dotenv(dotenv_path=".env.embedding")
 
@@ -127,3 +129,20 @@ async def encode_document(doc: str) -> List[float]:
                 raise ValueError(f"Failed to extract embedding from response: {response_data}")
 
             return  vector
+
+async def save_conformed_points_for_internal_search(state: StateDictionary)->Coroutine[None,None, Dict[str, Any]| None]:
+    """
+
+    :param state:
+    :return:
+    """
+    state["upload_author"] = str(state["upload_author"]) #workaround for an error of json serialization.
+    cleaned_state = {
+        **state,
+        "refined_qa": [
+            {k: v for k, v in qa_item.items() if k != "vector"}
+            for qa_item in state.get("refined_qa", [])
+        ]
+    }
+    with open("assets/processed_docs/processed_documents.jsonl", "a", encoding="utf-8") as json_file:
+        json_file.write(json.dumps(cleaned_state) + "\n")

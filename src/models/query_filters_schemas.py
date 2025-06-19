@@ -16,7 +16,7 @@ Key Features:
     - Built-in Pydantic validation for type safety and constraint enforcement
 
 Classes:
-    QueryParameters: Main query parameter model with filtering and ordering options
+    SearchQueryParameters: Main query parameter model with filtering and ordering options
 
 Usage:
     This module is typically used in API endpoints or database query operations
@@ -25,12 +25,12 @@ Usage:
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, NameEmail
 
 
-class QueryParameters(BaseModel):
+class SearchQueryParameters(BaseModel):
     """
-    QueryParameters
+    SearchQueryParameters
 
     A class that defines the parameters for querying predictions, including
     class constraints, index, and order by criteria.
@@ -41,7 +41,18 @@ class QueryParameters(BaseModel):
         order_by (Literal): The field to order the results by, can be 'index_id',
                             'prediction', or 'time_stamp'.
     """
+    upload_author: NameEmail = Field(..., title="Upload author", description="Autor original del procesado del documento.")
+    doc_name: str = Field(..., title="Document name", description="Nombre original del documento word.")
+    index: int =  Field(..., ge=1, le=10, title="Index", description="índice de documentos transformados y subidos a Qdrant")
+    order_by: Literal["index_id", "doc_name"] = "index_id"
 
-    doc_name: str = Field(..., title="Document name", description="Original docx filename.")
-    index: int =  Field(..., ge=1, le=10, title="Index", description="Index of the documents transformed and uploaded for search porpoises.")
-    order_by: Literal["index_id", "doc_name", "time_stamp"] = "index_id"
+class UploadDocsParameters(BaseModel):
+    """
+    UploadDocsParameters
+    A class that defines the parameters for uploading documents to be transformed as Q&A pairs and
+    uploaded to Qdrant
+    """
+    upload_author: NameEmail = Field(..., title="Upload author", description="Autor original del procesado del documento.")
+    doc_name: str = Field(..., title="Document name", description="Nombre original del documento word.")
+    collection: Literal["Coll1", "Coll2", "Coll3", "Coll4", "Coll5", "Coll6"] = Field(..., title="Collection", description="Colección a la que subir el documento")
+    update_collection: bool = Field(..., title="Update document", description=" Si la condición es verdadera, sobreescribe y actualiza los datos de la colección en Qdrant")

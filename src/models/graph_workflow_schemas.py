@@ -34,7 +34,7 @@ from enum import Enum
 from typing import Any, Callable, Coroutine, Dict, List, Literal, NamedTuple, Optional, TypedDict, Union
 
 from langchain_core.documents import Document
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, NameEmail
 
 
 class LlmGenerationResponse(BaseModel):
@@ -74,6 +74,9 @@ class StateDictionary(TypedDict):
     :arg error: A json format error that informs if anything has failed in the status flow of the graph.
     """
     status: str | None
+    upload_author: NameEmail
+    doc_name: str | None
+    updated_collection: bool
     original_document_path: str | None
     original_document: List[Document] | str | None
     generated_qa: Optional[Dict[str, str] | Coroutine[Any, Any, Dict[str, str]]] | None

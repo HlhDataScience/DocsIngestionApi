@@ -1,0 +1,21 @@
+videos_moodleRE.xlsx
+testings.ipynb
+Qdrant_uploads.ipynb
+endpoints.txt
+Bentchmark_results.csv
+Asistente virtual_Base de datos - UNIR México 03_04_2025.xlsx
+jupyter_tests/
+benchmark/
+.venv/
+.pytest_cache/
+.mypy_cache/
+.git
+.gitignore
+src/__pycache__/
+src/abstractions/__pycache__/
+src/application/__pycache__/
+src/client/__pycache__/
+src/controllers/__pycache__/
+src/models/__pycache__/
+src/security/__pycache__/
+src/utils/__pycache__/

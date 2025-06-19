@@ -19,7 +19,7 @@ def self_reflecting_stategraph_factory_constructor(state_dict: type[StateDiction
                                    router_function: Optional[Callable[
                                        [StateDictionary], EvalDecision | StateDictionary]] = None) -> StateGraph:
     """
-    This function creates a StateGraph from a status dictionary and a node function tuple.
+    This function creates a StateGraph from a state dictionary and a node function tuple.
     :param router_function: The router function to be used for the state graph when need to decide a conditional step.
     :param state_dict: The status dictionary that represents the flow of information at any time give within the StateGraph.
     :param node_functions: A tuple of NodeFunctions representing the node functions.

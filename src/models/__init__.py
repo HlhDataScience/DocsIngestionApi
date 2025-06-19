@@ -1,6 +1,6 @@
 from .graph_workflow_schemas import LlmGenerationResponse, NodeFunctionsTuple, StateDictionary, EvalDecision, \
     LlmEvaluatorResponse
-from .query_filters_schemas import QueryParameters
+from .query_filters_schemas import SearchQueryParameters, UploadDocsParameters
 from .response_schemas import FastApiGetResponse, FastApiPostResponse, APIInfoResponse
 from .security_schemas import ApiKeyGenerationRequest
 from .specs_schemas import EndpointSpec
@@ -16,12 +16,13 @@ __all__= [
     "LlmGenerationResponse",
     "NodeFunctionsTuple",
     "StateDictionary",
-    "QueryParameters",
+    "SearchQueryParameters",
     "EvalDecision",
     "LlmEvaluatorResponse",
     "QdrantBotAnswerConformer",
     "QdrantDataPointConformer",
     "ApiKeyGenerationRequest",
+    "UploadDocsParameters",
 
 ]
 

@@ -28,3 +28,5 @@ src/controllers/__pycache__/
 src/models/__pycache__/
 src/utils/__pycache__/
 test/__pycache__/
+assets/docs_for_testing/test_doc.docx
+assets/processed_docs/processed_documents.jsonl

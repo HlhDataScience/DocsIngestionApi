@@ -35,9 +35,8 @@ from src.models import StateDictionary
 
 
 async def stategraph_run(
-        input_docs_path: str,
+        initial_state: StateDictionary,
         uncompiled_graph: StateGraph,
-        example_docs_path: str,
         debug:bool = False
 )-> Coroutine[Any, Any, StateDictionary]:
     """
@@ -49,11 +48,10 @@ async def stategraph_run(
     generation, evaluation, refinement, and final upload to the vector database.
 
     Args:
-        input_docs_path (str): Absolute or relative path to the input Word document
-            (.docx file) that will be processed to generate Q&A pairs.
+
+        initial_state (StateDictionary): Initial state of the workflow.
         uncompiled_graph (StateGraph): The LangGraph StateGraph instance containing
             all the workflow nodes and edges, ready for compilation and execution.
-        example_docs_path (str): Path to the JSON file containing example Q&A pairs
             that will be used by the evaluator for quality comparison and guidance.
         debug (bool, optional): Enable debug mode for graph compilation, which
             provides additional logging and introspection capabilities. Defaults to False.
@@ -71,20 +69,11 @@ async def stategraph_run(
             - refined_qa (Dict): Final refined Q&A pairs (if refinement occurred)
             - max_retry (int): Total number of retry iterations performed
             - error (Dict | None): Any error information if the workflow failed
+
     """
 
 
-    initial_state = StateDictionary(
-    status = None,
-    original_document=None,
-    original_document_path= input_docs_path,
-    generated_qa= None,
-    examples_qa= None,
-    examples_path= example_docs_path,
-    evaluator_response= None,
-    refined_qa= None,
-    max_retry= 0,
-    error= None)
+
     compiled_graph = uncompiled_graph.compile(debug=debug)
 
     result = await compiled_graph.ainvoke(input= initial_state)
