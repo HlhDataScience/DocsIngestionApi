@@ -46,9 +46,12 @@ from src.models import (
 )
 from .api_endpointfuncs import(
     dev_get_post_docs_root,
+    get_post_docs_root,
     get_uploaded_docs_info,
     upload_docx,
-    generate_api_key_point,)
+    generate_api_key_point,
+    docs_index
+)
 
 if not protocol_checker(
         fn_list= [dev_get_post_docs_root, upload_docx, get_uploaded_docs_info, generate_api_key_point, ],
@@ -66,7 +69,7 @@ dev_root_spec = EndpointSpec(
 )
 pro_root_spec = EndpointSpec(
     path= "/",
-    handler= dev_get_post_docs_root, # type: ignore
+    handler= get_post_docs_root, # type: ignore
     required_params= ["GET"],
     response_model= APIInfoResponse,
 
@@ -77,6 +80,13 @@ post_documents_spec = EndpointSpec(
     handler= upload_docx, # type: ignore
     required_params= ["POST"],
     response_model= FastApiPostResponse,
+
+)
+get_docs_index_spec = EndpointSpec(
+    path="/index",
+    handler= docs_index,
+    required_params= ["GET"],
+    response_model= FastApiGetResponse,
 
 )
 

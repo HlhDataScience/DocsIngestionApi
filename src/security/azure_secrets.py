@@ -35,7 +35,7 @@ async def store_key_in_vault(key_id: str, hashed_key: str, description: str, exp
 
     try:
         secrets_client.set_secret(
-            secret_id=key_id,
+            name=key_id,
             secret=hashed_key,
             expires_on=expires_on,
             tags= {

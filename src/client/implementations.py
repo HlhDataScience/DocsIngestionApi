@@ -314,12 +314,12 @@ class QdrantClientAsync(VectorDataBaseClientInterfaceAsync):
                 else:
                     logging.info(f"Successfully uploaded batch {batch_num} items")
 
-                batch_verified = await self._verify_batch(points[0]["id"])
-                verification = bool(batch_verified.get("result", None)) # type: ignore  # Fixed: check "result" not "status"
-                if verification:
-                    logging.info(f"Successfully verified first item in batch {batch_num}.")
-                else:
-                    logging.warning(f"Failed to verify first item in batch {batch_num}.")
+               # batch_verified = await self._verify_batch(points[0]["id"])
+               # verification = bool(batch_verified.get("result", None)) # type: ignore  # Fixed: check "result" not "status"
+               # if verification:
+               #     logging.info(f"Successfully verified first item in batch {batch_num}.")
+                #else:
+                 #   logging.warning(f"Failed to verify first item in batch {batch_num}.")
 
             except Exception as e:
                 logging.error(f"Fail in the process. Error: {e}")

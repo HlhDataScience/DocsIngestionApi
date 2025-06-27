@@ -9,7 +9,7 @@ import logging
 import os
 import random
 from pathlib import Path
-from typing import Any,Coroutine, Dict, Generator, List
+from typing import Any, Generator, Dict, AsyncGenerator, List, Set
 
 import aiohttp
 import ijson
@@ -130,9 +130,9 @@ async def encode_document(doc: str) -> List[float]:
 
             return  vector
 
-async def save_conformed_points_for_internal_search(state: StateDictionary)->Coroutine[None,None, Dict[str, Any]| None]:
+async def save_conformed_points_for_internal_search(state: StateDictionary)-> None:
     """
-
+    Utility function to save the results inside a jsonl file in case the upload it is not well performed.
     :param state:
     :return:
     """
@@ -146,3 +146,17 @@ async def save_conformed_points_for_internal_search(state: StateDictionary)->Cor
     }
     with open("assets/processed_docs/processed_documents.jsonl", "a", encoding="utf-8") as json_file:
         json_file.write(json.dumps(cleaned_state) + "\n")
+
+async def simplify_items_for_search(file_path: str, excluded_keys: Set[str]) -> AsyncGenerator[Dict[str, Any], None]:
+    """
+    Small utility function to create a more readable index. Uses lazy load to make it more performative.
+    :param file_path: (str) the file path where the json are located.
+    :param excluded_keys: (Set[str]) a set of keys which are not necessary for the indexing and search.
+    :return: Generator[Dict[str, Any], None, None]
+    """
+    with open(file_path, "r", encoding="utf-8") as json_file:
+        for index, line in enumerate(json_file):
+            items:Dict[str, Any] = json.loads(line)
+            simplified = {k: v for k, v in items.items() if k not in excluded_keys}
+            simplified["index"] = index + 1
+            yield simplified

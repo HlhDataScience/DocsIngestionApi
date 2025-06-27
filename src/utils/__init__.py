@@ -5,7 +5,8 @@ from .utilities import (
     load_markdown,
     create_engine,
     encode_document,
-    save_conformed_points_for_internal_search
+    save_conformed_points_for_internal_search,
+    simplify_items_for_search
 )
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "create_engine",
     "encode_document",
     "save_conformed_points_for_internal_search",
+    "simplify_items_for_search"
 ]

@@ -32,6 +32,7 @@ dev = [
     "mypy>=1.15.0", # type hints
     "nest-asyncio>=1.6.0",
     "notebook>=7.4.3",
+    "polars>=1.31.0",
     "pytest>=8.3.5", # testeos para dev
     "pytest-asyncio>=1.0.0",
     "specialist>=0.7.0", # especializador del bytecode para mejorar el código en situaciones de necesaria optimización.

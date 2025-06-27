@@ -10,7 +10,9 @@ from .controllers import (
     post_documents_spec,
     dev_root_spec,
     pro_root_spec,
-    post_generated_api_key_spec
+    post_generated_api_key_spec,
+    get_docs_index_spec
+
 )
 from .utils import setup_custom_logging
 __all__ = [
@@ -20,5 +22,6 @@ __all__ = [
     "dev_root_spec",
     "pro_root_spec",
     "setup_custom_logging",
-    "post_generated_api_key_spec"
+    "post_generated_api_key_spec",
+    "get_docs_index_spec"
     ]

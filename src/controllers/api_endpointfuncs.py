@@ -47,10 +47,11 @@ Usage:
     route decorators to create HTTP endpoints.
 """
 
-from typing import Annotated, Any, Dict
+from typing import Annotated, Any, Dict, Set
 
 import json
 from fastapi import Query, Depends
+from multipart import file_path
 from pydantic_core import ValidationError
 
 from src.application import (
@@ -72,6 +73,8 @@ from src.security import (
     generate_api_key,
     store_key_in_vault
 )
+
+from src.utils import simplify_items_for_search
 
 
 async def dev_get_post_docs_root() -> Dict[str, Any]:
@@ -147,6 +150,44 @@ async def get_post_docs_root() -> Dict[str, Any]:
             "/openapi.json": "Esquema OpenAPI.",
         }
     }
+async def docs_index() -> Dict[str, Any]:
+    """
+    Return the uploaded and transformed documents info to make the search easier for the endpoint "search".
+    :return:
+        docs_index: Dict[str, Any] The json formatted documents index
+    """
+    file_path = "assets/processed_docs/processed_documents.jsonl"
+    non_simplified_keys: Set[str] =  {
+        "status",
+        "original_document",
+        "generated_qa",
+        "examples_path",
+        "updated_collection",
+        "original_document_path",
+        "examples_qa",
+        "evaluator_response",
+        "refined_qa",
+        "max_retry",
+        "error"
+
+    }
+
+    try:
+        indexable_documents = []
+        async for doc in simplify_items_for_search(file_path, non_simplified_keys):
+            indexable_documents.append(doc)
+
+        return {
+            "status_code" : 200,
+            "message" : "Success",
+            "content" : {"results": indexable_documents}
+        }
+    except Exception as e:
+        return {
+            "status_code" : 500,
+            "message" : str(e),
+            "content" : {}
+        }
 
 async def get_uploaded_docs_info(
     query_parameters: Annotated[SearchQueryParameters, Query()]
