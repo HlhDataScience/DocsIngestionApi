@@ -1,126 +1,127 @@
-# Ingesta Documental BC
+# BC Document Ingestion
 
-## Ingesta Documental BC
+## BC Document Ingestion
 
-Este proyecto implementa un micro-servicio de API desarrollada con FastAPI. Permite la carga de documentos Word (`.docx`), su procesamiento a través de un grafo potenciado por LLM para generar pares de preguntas y respuestas (Q\&A), y su posterior almacenamiento en una base de vectores mediante Qdrant. Está diseñado para facilitar la ingesta y estructuración semántica de contenidos desde documentos sin estructurar. El resto del código sigue los estándares de estilo y comentarios en inglés.
+This project implements a microservice API developed with FastAPI. It allows uploading Word documents (`.docx`), processing them through an LLM-powered graph to generate question and answer pairs (Q&A), and subsequently storing them in a vector database using Qdrant. It's designed to facilitate the ingestion and semantic structuring of content from unstructured documents. The rest of the code follows English style standards and comments.
 
-### Índice
+### Table of Contents
 
-##### - [Tecnologías empleadas](#tecnologías-empleadas)
+##### - [Technologies Used](#technologies-used)
 
-##### - [Contenidos](#contenidos)
+##### - [Contents](#contents)
 
-##### - [Lógica del la aplicación](#lógica-de-la-aplicación)
+##### - [Application Logic](#application-logic)
 
-##### - [Modo de uso](#modo-de-uso)
+##### - [Usage](#usage)
 
-##### - [Hecho](#hecho)
+##### - [Completed](#completed)
 
-##### - [Por hacer](#por-hacer)
+##### - [To Do](#to-do)
 
-### Tecnologías empleadas
+### Technologies Used
 
-* `uv`: Gestor de ambientes virtuales moderno y ultrarrápido, ideal para gestionar dependencias en entornos reproducibles. Escrito en Rush
-* `langchain y langgraph`: Frameworks de trabajo para el desarrollo de aplicaciones potenciadas por LLM.
-* `FastAPI`: Framework web asíncrono de alto rendimiento para construir APIs robustas y rápidas.
-* `unestructured`: Librería para analizar y extraer contenido de archivos `.docx`.
-* `OpenAI`: Cliente oficial para interactuar con modelos de lenguaje GPT de OpenAI.
-* `Qdrant`: Base de datos de vectores utilizada para almacenar representaciones semánticas de los contenidos extraídos.
-* `specialist`: Analizador del bytecode para mejorar el código en situaciones de necesaria optimización.
-* `pytest`: Framework de testing para garantizar la estabilidad del sistema mediante pruebas automatizadas.
+* `uv`: Modern and ultra-fast virtual environment manager, ideal for managing dependencies in reproducible environments. Written in Rust
+* `langchain and langgraph`: Frameworks for developing LLM-powered applications.
+* `FastAPI`: High-performance asynchronous web framework for building robust and fast APIs.
+* `unstructured`: Library for parsing and extracting content from `.docx` files.
+* `OpenAI`: Official client for interacting with OpenAI's GPT language models.
+* `Qdrant`: Vector database used to store semantic representations of extracted content.
+* `specialist`: Bytecode analyzer to improve code in situations requiring optimization.
+* `pytest`: Testing framework to ensure system stability through automated tests.
 
-### Contenidos
+### Contents
 
-* **main.py:** Archivo principal que ejecuta la API de FastAPI mediante la implementación de una interfaz para cambios y pruebas con otros frameworks.
-* **src:** Directorio de ejecución del programa. Está dividido del siguiente modo:
-  *  **src/abstractions:** Este directorio contiene las interfaces para el framework de Fastapi, el cliente asíncrono de Qdrant, así como los protocolos que deben seguir los endpoints de las API. Esto nos permite mezclar de forma eficiente inheritance y duck typing, manteniendo una estructura coherente.
-  *  **src/application:** La lógica de negocio de la aplicación. Estructurado para seguir un estilo de programación funcional, el directorio contiene la instanciación de los motores de IA, la función de construcción del flujo del grafo, los nodos del grafo, el orquestador de la applicación y las instancias de construcción de los nodos.
-  *  **src/client:** El directorio contiene la implementación del cliente asíncrono de Qdrant, basado en `aiohttp` y heredando de la interfaz de cliente asíncrono creada en src/abstractions.
-  *  **src/controllers:** Este directorio contiene las funciones de los endpoints de la api, la implementación del framework específico de FastApi y los specs que deben seguir los endpoints para ser cargados en el framework. Los specs pasan un checkeo para comprobar que están conformes al protocolo establecido en src/abstractions.
-  *  **src/models:** El directorio contiene todos los modelos de tratamiento y conformación de datos basados en `pydantic` para el buen funcionamiento de la aplicación.
-  *  **src/security:** Este directorio contiene la capa de seguridad para acceder a la API. No está implementada en Staging ni en Development, pero sí que debería estarlo una vez pase a Producción. 
-  *  **src/utils:** El directorio contiene funciones y utilidades esenciales para el funcionamiento del programa. Destaca los logs personalizables y las funciones de carga y guardado de tipo *lazy* basadas en generadores.
-* **tests/**: Carpeta con tests automatizados para asegurar la correcta funcionalidad de cada componente (parsers, lógica OpenAI, endpoints).
-* **pyproject.toml:** Archivo de configuración con dependencias fijas y estructura basada en `uv`.
+* **main.py:** Main file that runs the FastAPI API through the implementation of an interface for changes and testing with other frameworks.
+* **src:** Program execution directory. It's divided as follows:
+    *  **src/abstractions:** This directory contains interfaces for the FastAPI framework, the asynchronous Qdrant client, as well as protocols that API endpoints must follow. This allows us to efficiently mix inheritance and duck typing while maintaining a coherent structure.
+    *  **src/application:** The application's business logic. Structured to follow a functional programming style, the directory contains AI engine instantiation, graph flow construction function, graph nodes, application orchestrator, and node construction instances.
+    *  **src/client:** The directory contains the implementation of the asynchronous Qdrant client, based on `aiohttp` and inheriting from the asynchronous client interface created in src/abstractions.
+    *  **src/controllers:** This directory contains API endpoint functions, FastAPI-specific framework implementation, and specs that endpoints must follow to be loaded into the framework. The specs pass a check to verify they conform to the protocol established in src/abstractions.
+    *  **src/models:** The directory contains all data processing and conforming models based on `pydantic` for proper application functioning.
+    *  **src/security:** This directory contains the security layer for API access. It's not implemented in Staging or Development, but should be once it moves to Production.
+    *  **src/utils:** The directory contains essential functions and utilities for program operation. Notable features include customizable logs and lazy loading and saving functions based on generators.
+* **tests/**: Folder with automated tests to ensure correct functionality of each component (parsers, OpenAI logic, endpoints).
+* **pyproject.toml:** Configuration file with fixed dependencies and structure based on `uv`.
 
-### Modo de uso
+### Usage
 
-1. **Requisitos**
+1. **Requirements**
 
-   * Python 3.12.\* (estrictamente para esta versión)
-   * Dependencias:
+    * Python 3.12.* (strictly for this version)
+    * Dependencies:
 
-     ```bash
-     uv sync --all-groups
-     ```
+      ```bash
+      uv sync --all-groups
+      ```
 
-2. **Configuración**
+2. **Configuration**
 
-   Toda la configuración está repartida en varios archivos de tipo .venv con su correspondiente información. Es importante que se recuerde que esta funcionalidad está dispuesta para los test de desarrollo y preproducción, teniendo que sustitutirse esta lógica por la del uso de Azure Secrets en Producción.
+   All configuration is distributed across various .env files with their corresponding information. It's important to remember that this functionality is designed for development and pre-production testing, and this logic should be replaced with Azure Secrets usage in Production.
 
-3. **Ejecución**
+3. **Execution**
 
-   Ejecutar el servidor local:
+   Run the local server:
 
    ```bash
    fastapi dev main.py
    ```
 
-   Enviar un documento Word mediante curl(el ejemplo es válido para cuando esté en un app service de azure):
+   Send a Word document via curl (the example is valid for when it's in an Azure app service):
 
    ```bash
    curl -X 'POST' \
-   'http://127.0.0.1:8000/uploadocs?input_docs_path=assets%2Ftest_doc.docx&upload_author=nombre%20apellido1%20apellido2%20%3Enombre%40correo.com%3E&doc_name=test_doc.docx&collection=Coll1&update_collection=false' \
+   'http://127.0.0.1:8000/uploadocs?input_docs_path=assets%2Ftest_doc.docx&upload_author=name%20surname1%20surname2%20%3Ename%40email.com%3E&doc_name=test_doc.docx&collection=Coll1&update_collection=false' \
    -H 'accept: application/json' \
    -d ''
    ```
-   O mediante una petición de url:
-   ````bash
-   http://127.0.0.1:8000/uploadocs?input_docs_path=assets%2Ftest_doc.docx&upload_author=nombre%20apellido1%20apellido2%20%3Enombre%40correo.com%3E&doc_name=test_doc.docx&collection=Coll1&update_collection=false
-   
-   ````
-   Consultar los archivos procesados y subidos en curl:
-   
-   ````bash
+   Or via URL request:
+   ```bash
+   http://127.0.0.1:8000/uploadocs?input_docs_path=assets%2Ftest_doc.docx&upload_author=name%20surname1%20surname2%20%3Ename%40email.com%3E&doc_name=test_doc.docx&collection=Coll1&update_collection=false
+   ```
+
+   Query processed and uploaded files with curl:
+
+   ```bash
    curl -X 'GET' \
-   'http://127.0.0.1:8000/search?upload_author=nombre%20apellido1%20apellido2%20%3Cnombre%40correo.com%3E&doc_name=test_docs.docx&index=1&order_by=index_id' \
+   'http://127.0.0.1:8000/search?upload_author=name%20surname1%20surname2%20%3Cname%40email.com%3E&doc_name=test_docs.docx&index=1&order_by=index_id' \
    -H 'accept: application/json'
-   ````
-   O mediante petición https:
-   ````bash
-   http://127.0.0.1:8000/search?upload_author=nombre%20apellido1%20apellido2%20%3Cnombre%40correo.com%3E&doc_name=test_docs.docx&index=1&order_by=index_id
-   ````
+   ```
+   Or via HTTPS request:
+   ```bash
+   http://127.0.0.1:8000/search?upload_author=name%20surname1%20surname2%20%3Cname%40email.com%3E&doc_name=test_docs.docx&index=1&order_by=index_id
+   ```
 
 4. **Testing**
 
-   Ejecutar la suite de pruebas:
+   Run the test suite:
 
    ```bash
-   pytest  tests
+   pytest tests
    ```
-## Lógica de la aplicación
+
+## Application Logic
 
 ![alt text](assets/graph_workflow/graph_workflow.png)
 
-### Hecho
+### Completed
 
-* Subida de archivos `.docx` a través de un endpoint REST.
-* Conversión de contenido de documentos en texto plano.
-* Generación de pares Q\&A mediante OpenAI con mocking para testeo.
-* Inserción de resultados en una colección de Qdrant.
-* Separación modular entre rutas, servicios, parsing y almacenamiento.
-* Implementación de pruebas unitarias con `pytest` y `pytest-mock`.
-* Configuración reproducible de entorno con `uv` y `pyproject.toml`.
-* Endpoint implementado para facilitar toda las búsquedas de documentos de manera fácil.
+* Upload of `.docx` files through a REST endpoint.
+* Conversion of document content to plain text.
+* Generation of Q&A pairs using OpenAI with mocking for testing.
+* Insertion of results into a Qdrant collection.
+* Modular separation between routes, services, parsing, and storage.
+* Implementation of unit tests with `pytest` and `pytest-mock`.
+* Reproducible environment configuration with `uv` and `pyproject.toml`.
+* Implemented endpoint to facilitate easy document searches.
 
-### Por hacer
+### To Do
 
-* ~~Mejorar manejo de errores y validación de archivos inválidos~~.
-* ~~Integración con entorno CI/CD para despliegues automáticos.~~
-* ~~Agregar autenticación básica al endpoint de subida.~~
-* ~~Incluir ejemplos de uso desde interfaz web o cliente Python.~~
-* ~~Documentación Swagger más detallada para cada endpoint.~~
-* ~~Implementar un endpoint con los índices, títulos y nombres de los que han hecho uso de la app de manera que sea más fácil el uso del endpoint `search`.~~
-* Mejorar el sistema de logging para que los logs de la lógica de negocio y los de la API tengan sus ficheros propios.
-* Implementar un lifespan en la aplicación para que no se construya un grafo nuevo cada vez que se usa el método post de `uploadocs`.
-* Implementar la seguridad mediante azure secrets.
+* ~~Improve error handling and validation of invalid files~~.
+* ~~Integration with CI/CD environment for automatic deployments.~~
+* ~~Add basic authentication to upload endpoint.~~
+* ~~Include usage examples from web interface or Python client.~~
+* ~~More detailed Swagger documentation for each endpoint.~~
+* ~~Implement an endpoint with indices, titles, and names of those who have used the app to make using the `search` endpoint easier.~~
+* Improve the logging system so that business logic logs and API logs have their own separate files.
+* Implement a lifespan in the application so that a new graph isn't built every time the `uploadocs` POST method is used.
+* Implement security through Azure secrets.
