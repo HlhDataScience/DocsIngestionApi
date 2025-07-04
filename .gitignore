@@ -11,7 +11,6 @@ endpoints.txt
 Bentchmark_results.csv
 grouped_qa.txt
 profile.html
-src/application/.env.azure.gpt4
 profile.html
 Qdrant_uploads.ipynb
 videos_moodleRE.xlsx
