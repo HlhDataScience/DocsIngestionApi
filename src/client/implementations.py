@@ -46,9 +46,9 @@ Example:
         res
 """
 
-
+from collections.abc import Coroutine, Iterable
 import logging
-from typing import Any, Coroutine, Dict, Iterable, List, Optional
+from typing import Any, Optional
 
 import aiohttp
 from pydantic import BaseModel, ValidationError
@@ -78,7 +78,7 @@ class QdrantClientAsync(VectorDataBaseClientInterfaceAsync):
         collection_name (str): Name of the Qdrant collection to manage.
         base_url (str): URL of the Qdrant server.
         session (aiohttp.ClientSession): Active async session for communication.
-        headers (Dict[str, str]): Request headers (e.g., for authentication).
+        headers (dict[str, str]): Request headers (e.g., for authentication).
         dense_size (Optional[int]): Expected dense vector dimension.
         sample_for_verification_size (Optional[int], optional): Number of vectors to verify. Defaults to 5.
 
@@ -118,7 +118,7 @@ class QdrantClientAsync(VectorDataBaseClientInterfaceAsync):
                  collection_name: str,
                  base_url: str,
                  session: aiohttp.ClientSession,
-                 headers: Dict[str, str],
+                 headers: dict[str, str],
                  dense_size: Optional[int],
                  sample_for_verification_size: Optional[int] = 5):
 
@@ -142,7 +142,7 @@ class QdrantClientAsync(VectorDataBaseClientInterfaceAsync):
         during client initialization.
 
         Returns:
-            Coroutine[Any, Any, Dict[str, Any]]: A coroutine that when awaited returns
+            Coroutine[Any, Any, dict[str, Any]]: A coroutine that when awaited returns
                 the Qdrant API response containing collection creation status.
 
         Raises:
@@ -151,7 +151,7 @@ class QdrantClientAsync(VectorDataBaseClientInterfaceAsync):
         """
         url: str = f"{self.__base_url}/collections/{self.__collection_name}"
 
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             "vectors": {
 
                     "size": self.__dense_size,
@@ -172,7 +172,7 @@ class QdrantClientAsync(VectorDataBaseClientInterfaceAsync):
 
         return None
 
-    async def get_collection_info(self) -> Coroutine[Any, Any, Dict[str, Any]]:
+    async def get_collection_info(self) -> Coroutine[Any, Any, dict[str, Any]]:
         """
         Retrieve metadata and information about the Qdrant collection.
 
@@ -180,7 +180,7 @@ class QdrantClientAsync(VectorDataBaseClientInterfaceAsync):
         configuration, status, and other metadata from the Qdrant server.
 
         Returns:
-            Coroutine[Any, Any, Dict[str, Any]]: A coroutine that when awaited returns
+            Coroutine[Any, Any, dict[str, Any]]: A coroutine that when awaited returns
                 collection metadata including points count, vectors config, and status.
 
         Raises:
@@ -195,16 +195,16 @@ class QdrantClientAsync(VectorDataBaseClientInterfaceAsync):
 
             logging.info(f"Qdrant collection retrieval response: {response_data}")
             return response_data
-    def _verify_points(self, item: Dict[str, Any]) -> Dict[str, Any]| None:
+    def _verify_points(self, item: dict[str, Any]) -> dict[str, Any]| None:
         """
         Asserts individual items against Qdrant-specific pydantic BaseModel format.
 
         Args:
 
-            item (Dict[str, Any]): Individual document/item to validate.
+            item (dict[str, Any]): Individual document/item to validate.
 
         Returns:
-            Coroutine[Any, Any, Dict[str, Any]]: A coroutine that when awaited returns
+            Coroutine[Any, Any, dict[str, Any]]: A coroutine that when awaited returns
                 the validated and potentially transformed item.
 
         Raises:
@@ -219,7 +219,7 @@ class QdrantClientAsync(VectorDataBaseClientInterfaceAsync):
             raise
 
 
-    async def _verify_batch(self, point_id: str) -> Dict[str, Any]:
+    async def _verify_batch(self, point_id: str) -> dict[str, Any] | None:
         """
         Verify that a specific point/batch upload completed successfully.
 
@@ -230,7 +230,7 @@ class QdrantClientAsync(VectorDataBaseClientInterfaceAsync):
             point_id (str): Identifier for the specific point to verify.
 
         Returns:
-            Dict[str, Any]: The point data if found, or error information if not found.
+            dict[str, Any]: The point data if found, or error information if not found.
 
         Raises:
             aiohttp.ClientError: If the HTTP request fails.
@@ -245,7 +245,7 @@ class QdrantClientAsync(VectorDataBaseClientInterfaceAsync):
                 return response_data
             except aiohttp.ContentTypeError as e:
                 text = await response.text()
-                logging.error(f"Expected JSON but got non-JSON content: {text}")
+                logging.error(f"Expected JSON but got non-JSON content: {text}\nerror: {e}")
                 raise
             except aiohttp.ClientResponseError as e:
                 logging.error(f"Client error while verifying point ID {point_id}: {e}")
@@ -257,13 +257,13 @@ class QdrantClientAsync(VectorDataBaseClientInterfaceAsync):
     @retry(stop=stop_after_attempt(max_attempt_number=3), wait=wait_exponential(multiplier=1, min=1, max=10))
     async def add_points_with_retry(
             self,
-            points: Dict[str, Any] | List[Dict[str, Any]]
-    ) -> Coroutine[Any, Any, Dict[str, Any]]:
+            points: dict[str, Any] | list[dict[str, Any]]
+    ) -> Coroutine[Any, Any, dict[str, Any]]:
         """
         Add vector points to Qdrant with automatic retry logic.
 
         Args:
-            points (Union[Dict[str, Any], List[Dict[str, Any]]]):
+            points (Union[dict[str, Any], list[dict[str, Any]]]):
                 Either a single point (dict) or a list of points to upload.
                 Example (single point):
                     {"id": "1", "vector": [0.1, 0.2], "payload": {"key": "value"}}
@@ -271,7 +271,7 @@ class QdrantClientAsync(VectorDataBaseClientInterfaceAsync):
                     [{"id": "1", "vector": [...]}, {"id": "2", "vector": [...]}]
 
         Returns:
-            Coroutine[Any, Any, Dict[str, Any]]: Qdrant API response.
+            Coroutine[Any, Any, dict[str, Any]]: Qdrant API response.
         """
         url = f"{self.__base_url}/collections/{self.__collection_name}/points"
 
@@ -283,13 +283,13 @@ class QdrantClientAsync(VectorDataBaseClientInterfaceAsync):
         async with self.__session.put(url=url, headers=self.__headers, json=payload) as response:
             return await response.json()
 
-    async def upload_documents(self, items: Iterable[Dict[str, Any]], batch_size: int) -> Coroutine[Any, Any, None] | None:  # type: ignore
+    async def upload_documents(self, items: Iterable[dict[str, Any]], batch_size: int) -> Coroutine[Any, Any, None] | None:  # type: ignore
         """
         Upload multiple documents to Qdrant in batches with progress tracking.
 
 
         """
-        responses: List = []
+        responses: list = []
         total_uploaded: int = 0
 
         # Convert to list if it's not already (to handle Iterable input)
@@ -360,7 +360,7 @@ class QdrantClientAsync(VectorDataBaseClientInterfaceAsync):
         logging.info(f"Successfully obtained response: {sample_result}.")
         return None
 
-    async def dense_search(self, dense_vector: List[float], top_k: int) -> Coroutine[Any, Any, Dict[str, Any]]| None:  # type: ignore
+    async def dense_search(self, dense_vector: list[float], top_k: int) -> Coroutine[Any, Any, dict[str, Any]]| None:  # type: ignore
         """
         Perform dense vector similarity search in the Qdrant collection.
 
@@ -368,7 +368,7 @@ class QdrantClientAsync(VectorDataBaseClientInterfaceAsync):
         the most similar vectors in the collection with cosine distance.
 
         Args:
-            dense_vector (List[float]): Query vector for similarity search.
+            dense_vector (list[float]): Query vector for similarity search.
             top_k (int): Number of most similar results to return.
 
         Returns:
@@ -392,8 +392,8 @@ class QdrantClientAsync(VectorDataBaseClientInterfaceAsync):
         async with self.__session.post(url=url, headers=self.__headers, json=payload) as response:
             return await response.json()
 
-    async def batch_queries(self, query_vectors: List[Dict[str, Any]],
-                            top_k: int) -> Coroutine[Any, Any, List[Dict[str, Any]]]:
+    async def batch_queries(self, query_vectors: list[dict[str, Any]],
+                            top_k: int) -> Coroutine[Any, Any, list[dict[str, Any]]]:
         """
         Execute multiple vector similarity queries in a single batch operation.
 
@@ -401,7 +401,7 @@ class QdrantClientAsync(VectorDataBaseClientInterfaceAsync):
         performance when processing multiple query vectors at once.
 
         Args:
-            query_vectors (List[Dict[str, Any]]): List of query dictionaries.
+            query_vectors (list[dict[str, Any]]): list of query dictionaries.
                 Each should contain a "vector" key with the query vector and
                 optionally a "query" key for identification.
             top_k (int): Number of most similar results to return for each query.

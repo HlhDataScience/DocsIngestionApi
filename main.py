@@ -12,8 +12,8 @@ from src import (
 
 
 app_ = FastApiFramework.from_constructor(app_type=FastAPI,
-                                         title="DocumentalIngestAPI",
-                                         version="DEV VERSION 1.9",
+                                         title="pre_ingesta_documental_be",
+                                         version="PRE VERSION 3.0",
                                          api_spec=(
                                             dev_root_spec,
                                             post_generated_api_key_spec,

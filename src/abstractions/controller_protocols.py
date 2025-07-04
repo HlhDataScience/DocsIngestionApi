@@ -8,8 +8,8 @@ Includes:
 - AsyncApiEndpointProtocolFunction: A runtime-checkable asynchronous protocol ensuring API endpoints match expected async signature.
 - protocol_checker: A utility to validate whether a list of functions conforms to the specified protocol.
 """
-
-from typing import Any, Callable, Coroutine, Dict, List, Protocol, runtime_checkable, Type, Union
+from collections.abc import Coroutine,Callable
+from typing import Any, Protocol, runtime_checkable
 
 @runtime_checkable
 class AsyncApiEndpointProtocolFunction(Protocol):
@@ -21,7 +21,7 @@ class AsyncApiEndpointProtocolFunction(Protocol):
     - a dictionary with string keys and arbitrary values (e.g., a JSON response), or
     - any other return type (to allow for flexible response handling).
     """
-    async def __call__(self, *args: Any, **kwargs: Any) -> Coroutine[Any, Any, Dict[str, Any] | Any]:
+    async def __call__(self, *args: Any, **kwargs: Any) -> Coroutine[Any, Any, dict[str, Any] | Any]:
         ...
 @runtime_checkable
 class ApiEndPointProtocolFunction(Protocol):
@@ -33,17 +33,16 @@ class ApiEndPointProtocolFunction(Protocol):
     - a dictionary with string keys and arbitrary values (e.g., a JSON response), or
     - any other return type (to allow for flexible response handling).
     """
-    def __call__(self, *args: Any, **kwargs: Any) -> Dict[str, Any] | Any:
+    def __call__(self, *args: Any, **kwargs: Any) -> dict[str, Any] | Any:
         ...
 
 
 def protocol_checker(
-    fn_list: List[Callable[..., Any]],
-    protocols: Union[
-        Type[ApiEndPointProtocolFunction],
-        Type[AsyncApiEndpointProtocolFunction],
-        tuple[Type[ApiEndPointProtocolFunction | AsyncApiEndpointProtocolFunction], ...]
-    ]
+    fn_list: list[Callable[..., Any]],
+    protocols: type[ApiEndPointProtocolFunction] |
+               type[AsyncApiEndpointProtocolFunction]|
+               tuple[type[ApiEndPointProtocolFunction | AsyncApiEndpointProtocolFunction], ...]
+
 ) -> bool:
     """
     Checks whether all functions in the list conform to at least one of the given runtime-checkable protocols.

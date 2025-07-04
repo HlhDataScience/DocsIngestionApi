@@ -33,8 +33,9 @@ Version: 1.1.0
 """
 
 from abc import ABC, abstractmethod
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, List, Optional, Sequence, Union
+from typing import Any, Optional
 
 from pydantic import BaseModel  # type: ignore
 
@@ -85,13 +86,13 @@ class AppInterface(ABC):
     @abstractmethod
     def add_route(
         self,
-        path: Union[str, Path],
+        path: str | Path,
         endpoint: ApiEndPointProtocolFunction,
         methods: Sequence[str],
         response_model: Optional[BaseModel] = None,
         status_code: Optional[int] = None,
-        tags: Optional[List[str]] = None,
-        dependencies: Optional[List[Any]] = None,
+        tags: Optional[list[str]] = None,
+        dependencies: Optional[list[Any]] = None,
     ) -> None:
         """
         Abstract method to register a new route with the application.

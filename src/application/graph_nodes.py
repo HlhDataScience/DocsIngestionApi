@@ -28,11 +28,12 @@ allowing the workflow to gracefully handle failures and maintain execution conte
 import asyncio
 import os
 from itertools import tee
-from typing import Any, Coroutine, Dict, Tuple, Iterator
+from collections.abc import Coroutine, Iterator
+from typing import Any
 from uuid import uuid4
 
 import aiohttp  # type: ignore
-from dotenv import dotenv_values  # type: ignore
+from aiohttp.client_exceptions import ClientError
 from langchain_community.document_loaders import UnstructuredWordDocumentLoader  # type: ignore
 from langchain_core.documents import Document  # type: ignore
 from langchain_core.output_parsers import JsonOutputParser  # type: ignore
@@ -96,11 +97,11 @@ async def parse_wordformat_document(state: StateDictionary)->StateDictionary:
 async def llm_call(
         state: StateDictionary,
         llm_engine: AzureChatOpenAI,
-        system_prompt: Tuple[str, ...],
-        user_prompt: Tuple[str, ...],
-        invoke_args: Dict[str, Any],
-        json_parser: BaseModel = LlmGenerationResponse,
-) -> Dict[str, str] | Coroutine[Any, Any, Dict[str, str]] | None:
+        system_prompt: tuple[str, ...],
+        user_prompt: tuple[str, ...],
+        invoke_args: dict[str, Any],
+        json_parser: type[BaseModel] = LlmGenerationResponse,
+) -> dict[str, str] | Coroutine[Any, Any, dict[str, str]] | None:
     """
     Execute a standardized LLM call using prompt chaining in LangChain.
 
@@ -112,14 +113,14 @@ async def llm_call(
     Args:
         state (StateDictionary): Current workflow state for error checking
         llm_engine (AzureChatOpenAI): The Azure OpenAI LLM instance to use
-        system_prompt (Tuple[str, ...]): System-level instructions for the LLM
-        user_prompt (Tuple[str, ...]): User-level instructions and context
-        invoke_args (Dict[str, Any]): Arguments to pass to the LLM chain
+        system_prompt (tuple[str, ...]): System-level instructions for the LLM
+        user_prompt (tuple[str, ...]): User-level instructions and context
+        invoke_args (dict[str, Any]): Arguments to pass to the LLM chain
         json_parser (BaseModel, optional): Pydantic model for structured output.
             Defaults to LlmGenerationResponse.
 
     Returns:
-        Coroutine[None, None, Dict[str, Any] | None]: Async coroutine that yields
+        Coroutine[None, None, dict[str, Any] | None]: Async coroutine that yields
             the parsed LLM response as a dictionary, or None if an error occurred.
 
     Raises:
@@ -136,10 +137,10 @@ async def llm_call(
         return state  # type: ignore
 
     llm = llm_engine
-    parser = JsonOutputParser(pydantic_object=json_parser)
+    parser = JsonOutputParser(pydantic_object=json_parser) # type: ignore
     prompt = ChatPromptTemplate.from_messages([
-        system_prompt,
-        user_prompt,
+        system_prompt, # type: ignore
+        user_prompt, # type: ignore
     ])
     chain = prompt | llm | parser
 
@@ -161,7 +162,7 @@ async def qa_generator_node(state:StateDictionary)->StateDictionary | None:
 
     Returns:
         StateDictionary | None: Updated state containing:
-            - generated_qa (Dict[str, Any]): The generated Q&A pairs
+            - generated_qa (dict[str, Any]): The generated Q&A pairs
             - status (str): Success/error status message
             - error (dict | None): Error details if generation failed
 
@@ -201,7 +202,7 @@ async def qa_generator_node(state:StateDictionary)->StateDictionary | None:
         "format_instructions": parser.get_format_instructions()
     }
     try:
-        result:Dict[str, str] | Coroutine[Any, Any, Dict[str, str]] | None = await llm_call(
+        result:dict[str, str] | Coroutine[Any, Any, dict[str, str]] | None = await llm_call(
             state=state,
             llm_engine=GENERATOR_ENGINE,
             system_prompt=system_prompt,
@@ -236,15 +237,15 @@ async def evaluator_node(state: StateDictionary)->StateDictionary| None:
 
     Args:
         state (StateDictionary): Workflow state containing:
-            - generated_qa (Dict[str, Any]): Q&A pairs to evaluate
+            - generated_qa (dict[str, Any]): Q&A pairs to evaluate
             - examples_qa (List | None): Example Q&A pairs for comparison
             - examples_path (str): Path to example Q&A JSON file
             - error (dict | None): Any existing error state
 
     Returns:
-        Coroutine[None,None, Dict[str, Any]| None]: Async coroutine that yields
+        Coroutine[None,None, dict[str, Any]| None]: Async coroutine that yields
             updated state containing:
-            - evaluator_response (Dict[str, Any]): Evaluation results and decision
+            - evaluator_response (dict[str, Any]): Evaluation results and decision
             - examples_qa (List): Loaded example Q&A pairs
             - status (str): Success/error status message
             - error (dict | None): Error details if evaluation failed
@@ -309,7 +310,7 @@ async def evaluator_node(state: StateDictionary)->StateDictionary| None:
             "format_instructions": parser.get_format_instructions()
         }
     try:
-        result: Dict[str, Any] = await llm_call(
+        result: dict[str, Any] = await llm_call(
             state=state,
             llm_engine=EVALUATOR_ENGINE,
             system_prompt=system_prompt,
@@ -343,7 +344,7 @@ async def evaluator_router(state:StateDictionary)-> EvalDecision | StateDictiona
 
     Args:
         state (StateDictionary): Workflow state containing:
-            - evaluator_response (Dict): Contains 'evaluation' key with decision
+            - evaluator_response (dict): Contains 'evaluation' key with decision
             - max_retry (int): Current number of retry attempts
             - error (dict | None): Any existing error state
 
@@ -378,7 +379,7 @@ async def evaluator_router(state:StateDictionary)-> EvalDecision | StateDictiona
     else:
         return EvalDecision.CORRECT
 
-async def qa_refiner_node(state:StateDictionary)-> Coroutine[None,None, Dict[str, Any]| None]:
+async def qa_refiner_node(state:StateDictionary)-> Coroutine[None,None, dict[str, Any]]| dict[str, Any] |StateDictionary:
     """
     Refine and improve question-answer pairs based on evaluation feedback.
 
@@ -389,15 +390,15 @@ async def qa_refiner_node(state:StateDictionary)-> Coroutine[None,None, Dict[str
 
     Args:
         state (StateDictionary): Workflow state containing:
-            - generated_qa (Dict[str, Any]): Original Q&A pairs to refine
+            - generated_qa (dict[str, Any]): Original Q&A pairs to refine
             - examples_qa (List): Example Q&A pairs for guidance
             - max_retry (int): Current retry count
             - error (dict | None): Any existing error state
 
     Returns:
-        Coroutine[None,None, Dict[str, Any]| None]: Async coroutine that yields
+        Coroutine[None,None, dict[str, Any]| None]: Async coroutine that yields
             updated state containing:
-            - refined_qa (Dict[str, Any]): Improved Q&A pairs
+            - refined_qa (dict[str, Any]): Improved Q&A pairs
             - max_retry (int): Incremented retry counter
             - status (str): Success/error status with iteration number
             - error (dict | None): Error details if refinement failed
@@ -451,7 +452,7 @@ async def qa_refiner_node(state:StateDictionary)-> Coroutine[None,None, Dict[str
             "format_instructions": parser.get_format_instructions()
         }
     try:
-        result: Coroutine[None,None, Dict[str, Any]| None] = await llm_call(
+        result: Coroutine[None,None, dict[str, Any]| None] = await llm_call(
             state=state,
             llm_engine=REFINER_ENGINE,
             system_prompt=system_prompt,
@@ -483,11 +484,11 @@ async def conform_points_to_qdrant(state: StateDictionary)-> Coroutine[Any, Any,
 
     Args:
         state (StateDictionary): Workflow state containing:
-            - refined_qa (Dict[str, Any]): Final Q&A pairs to conform.
+            - refined_qa (dict[str, Any]): Final Q&A pairs to conform.
             - error (dict | None): Any existing error state
 
     Returns:
-        Coroutine[None,None, Dict[str, Any]| None]: Async coroutine that yields
+        Coroutine[None,None, dict[str, Any]| None]: Async coroutine that yields
             updated state containing:
             - status (str): Success/error status message
             - error (dict | None): Error details if upload failed
@@ -496,11 +497,12 @@ async def conform_points_to_qdrant(state: StateDictionary)-> Coroutine[Any, Any,
     if isinstance(state["refined_qa"], str):
         graph_logger.warning(f"{state['refined_qa']} is a runtime string, converting to dictionary format")
         import json
-        state["refined_qa"] = json.loads(state["refined_qa"])
+        # noinspection PyTypeChecker
+        state["refined_qa"] = json.loads(state["refined_qa"]) # type: ignore
 
     # Creating the lazy loaders (generators)
-    text_generator = (d["text"] for d in state["refined_qa"]["response"])
-    answer_generator = (d["answer"] for d in state["refined_qa"]["response"])
+    text_generator = (d["text"] for d in state["refined_qa"]["response"]) # type: ignore
+    answer_generator = (d["answer"] for d in state["refined_qa"]["response"]) # type: ignore
 
     original_generator = ({
         "text": text,
@@ -545,7 +547,7 @@ async def conform_points_to_qdrant(state: StateDictionary)-> Coroutine[Any, Any,
     return state
 
 
-async def upload_points_to_qdrant(state: StateDictionary)->Coroutine[None,None, Dict[str, Any]| None]:
+async def upload_points_to_qdrant(state: StateDictionary)->Coroutine[None,None, dict[str, Any]| None] |StateDictionary| None :
     """
     Upload refined question-answer pairs to Qdrant vector database.
 
@@ -556,11 +558,11 @@ async def upload_points_to_qdrant(state: StateDictionary)->Coroutine[None,None, 
 
     Args:
         state (StateDictionary): Workflow state containing:
-            - refined_qa (Dict[str, Any]): Final Q&A pairs to upload
+            - refined_qa (dict[str, Any]): Final Q&A pairs to upload
             - error (dict | None): Any existing error state
 
     Returns:
-        Coroutine[None,None, Dict[str, Any]| None]: Async coroutine that yields
+        Coroutine[None,None, dict[str, Any]| None]: Async coroutine that yields
             updated state containing:
             - status (str): Success/error status message
             - error (dict | None): Error details if upload failed
@@ -596,47 +598,54 @@ async def upload_points_to_qdrant(state: StateDictionary)->Coroutine[None,None, 
     if state["error"] is not None:
         graph_logger.error(f"Error encountered in the node within the function {upload_points_to_qdrant.__name__}\n\n Details: {state["error"]}")
         return state
-    DOTENV_PATH = "src/application/.env.qdrant"
-    env_vars = dotenv_values(DOTENV_PATH)
+
+
 
     # Ensure all required environment variables are injected into os.environ
     required_keys = {
         "QDRANT_API_KEY",
-        "URL",
-        "SYNTHETIC_DOCS_COLLECTION"
-
+        "QDRANT_URL",
     }
+    env_vars = os.environ
+    try:
+        for key in required_keys:
+            value = env_vars.get(key)
+            if not value:
+                raise ValueError(f"Missing required environment variable: {key}")
 
-    for key in required_keys:
-        value = env_vars.get(key)
-        if not value:
-            raise ValueError(f"Missing required environment variable: {key}")
-        os.environ[key] = value
+    except ValueError as e:
+        state["status"] = "error: missing environment variable"
+        state["error"] = {
+            "status" : "error",
+            "message" : str(e)
+        }
+        graph_logger.error(e)
+        return state
+    try:
+        async with aiohttp.ClientSession() as session:
+            client = QdrantClientAsync(data_model=QdrantBotAnswerConformer, collection_name=state["collection"], base_url=env_vars["QDRANT_URL"],
+                                       session=session, headers={
+                    "Content-Type": "application/json",
+                    "api-key": env_vars["QDRANT_API_KEY"]
+                }, dense_size=3072)
 
 
 
-    async with aiohttp.ClientSession() as session:
-        client = QdrantClientAsync(data_model=QdrantBotAnswerConformer, collection_name=env_vars["SYNTHETIC_DOCS_COLLECTION"], base_url=env_vars["URL"],
-                                   session=session, headers={
-                "Content-Type": "application/json",
-                "api-key": env_vars["QDRANT_API_KEY"]
-            }, dense_size=3072)
-        try:
             if state["updated_collection"]:
                 ... # Adding the logic later
             else:
                 await client.upload_documents(items=state["refined_qa"], batch_size=50)
                 state["status"] = "successfully uploaded documents"
 
-        except Exception as e:
-            state["status"] = "error uploading documents to Qdrant collection"
-            state["error"] = {
-                "status": "error",
-                "message": str(e),
-            }
-            graph_logger.error(e)
-            return state
-        state["status"] = "successfully uploaded documents"
-        graph_logger.info("Successfully uploaded documents")
+    except (OSError, ClientError, Exception, RuntimeError, TimeoutError) as e:
 
+        state["status"] = "error configuring Qdrant Client or uploading documents"
+        state["error"] = {
+            "status": "error",
+            "message": str(e)
+        }
+        graph_logger.error(e)
         return state
+    graph_logger.info("Successfully uploaded documents")
+
+    return state

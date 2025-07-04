@@ -5,9 +5,8 @@ This module contains the factory pattern function to create self reflecting grap
 NodeFunctionsTuple to estructure the different steps of the flow.
 """
 
-
-from typing import Callable, Optional, Tuple
-
+from collections.abc import Callable
+from typing import  Optional
 from langgraph.graph import END, StateGraph, START  # type: ignore
 
 from src.models import EvalDecision, NodeFunctionsTuple, StateDictionary
@@ -15,7 +14,7 @@ from src.utils import setup_custom_logging
 
 logger = setup_custom_logging(logger_name= "langgraph.log",log_file_path="logs")
 def self_reflecting_stategraph_factory_constructor(state_dict: type[StateDictionary],
-                                   node_functions: Tuple[NodeFunctionsTuple, ...],
+                                   node_functions: tuple[NodeFunctionsTuple, ...],
                                    router_function: Optional[Callable[
                                        [StateDictionary], EvalDecision | StateDictionary]] = None) -> StateGraph:
     """

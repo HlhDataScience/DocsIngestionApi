@@ -46,14 +46,16 @@ Usage:
     document ingestion services. Functions are typically decorated with FastAPI
     route decorators to create HTTP endpoints.
 """
-
-from typing import Annotated, Any, Dict, Set
+import os
+from typing import  Any, Dict, Set
+from uuid import uuid4
 
 import json
-from fastapi import Query, Depends
-from multipart import file_path
+from fastapi import Depends, UploadFile, File
 from pydantic_core import ValidationError
-
+import shutil
+from azure.storage.blob.aio import BlobServiceClient
+from azure.core.exceptions import ResourceNotFoundError
 from src.application import (
     self_reflecting_stategraph_factory_constructor,
     stategraph_run,
@@ -68,14 +70,18 @@ from src.models import (
     ApiKeyGenerationRequest
 )
 from src.security import (
-    API_KEY_PREFIX,
     hash_key,
     generate_api_key,
-    store_key_in_vault
+    store_key_in_vault,
+    validate_users_api_key,
+    validate_admin_api_key
+
 )
 
 from src.utils import simplify_items_for_search
-
+AZURE_STORAGE_CONNECTION_STRING = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
+CONTAINER_NAME = os.getenv("CONTAINER_NAME")
+BLOB_NAME = os.getenv("BLOB_NAME")
 
 async def dev_get_post_docs_root() -> Dict[str, Any]:
     """
@@ -101,11 +107,12 @@ async def dev_get_post_docs_root() -> Dict[str, Any]:
             - "endpoints": Dictionary mapping endpoint paths to descriptions
             """
     return {
-        "message" : "Bienvenido a DocumentalIngestAPI",
+        "message" : "Bienvenido al servicio API de pre_ingesta_documental_be" ,
         "description" : "Servicio de Ingesta Documental para Bases de Conocimiento",
-        "version" : "DEV VERSION 2.0",
+        "version" : "PRE VERSION 3.0 // Imagen de Docker version latest",
         "endpoints" : {
-            "/generate-key" : "Endpoint para generar nuevas claves API, protegido por una clave de administrador si está configurada. Genera y almacena las claves API.",
+            "/generate-key" : "REQUIERE API KEY. Endpoint para generar nuevas claves API, protegido por una clave de administrador. Genera y almacena las claves API en un secrets Vault.",
+            "/index": "REQUIERE API KEY. Índice de búsqueda de los documentos procesados con anterioridad. Devuelve los datos esenciales que luego se pueden usar para usar el siguiente endpoint, '/search'.",
             "/search" : "REQUIERE API KEY. Recupera información sobre los documentos previamente subidos en función de los parámetros de consulta.",
             "/uploadocs": "REQUIERE API KEY. Procesa y sube documentos de Word a la base de conocimiento de Qdrant de forma asíncrona utilizando un flujo de trabajo basado en grafos potenciado por GenAI.",
             "/docs": "Documentación de la API (Swagger UI).",
@@ -139,25 +146,25 @@ async def get_post_docs_root() -> Dict[str, Any]:
 
     """
     return {
-        "message" : "Bienvenido a DocumentalIngestAPI",
-        "description" : "Servicio de Ingesta Documental para Bases de Conocimiento",
-        "version" : "1.0",
-        "endpoints" : {
-            "/generate-key" : "Endpoint para generar nuevas claves API. Genera y almacena las claves API.",
-            "/search" : "REQUIERE API KEY. Recupera información sobre los documentos previamente subidos en función de los parámetros de consulta.",
+        "message": "Bienvenido al servicio API de ingesta_documental_be",
+        "description": "Servicio de Ingesta Documental para Bases de Conocimiento",
+        "version": "PRODUCTION VERSION 1.0",
+        "endpoints": {
+            "/generate-key": "REQUIERE API KEY. Endpoint para generar nuevas claves API, protegido por una clave de administrador. Genera y almacena las claves API en un secrets Vault.",
+            "/index": "REQUIERE API KEY. Índice de búsqueda de los documentos procesados con anterioridad. Devuelve los datos esenciales que luego se pueden usar para usar el siguiente endpoint, '/search'.",
+            "/search": "REQUIERE API KEY. Recupera información sobre los documentos previamente subidos en función de los parámetros de consulta.",
             "/uploadocs": "REQUIERE API KEY. Procesa y sube documentos de Word a la base de conocimiento de Qdrant de forma asíncrona utilizando un flujo de trabajo basado en grafos potenciado por GenAI.",
             "/docs": "Documentación de la API (Swagger UI).",
             "/openapi.json": "Esquema OpenAPI.",
         }
     }
-async def docs_index() -> Dict[str, Any]:
+async def docs_index(
+        valid_api_key: str = Depends(validate_users_api_key())
+) -> Dict[str, Any]:
     """
     Return the uploaded and transformed documents info to make the search easier for the endpoint "search".
-    :return:
-        docs_index: Dict[str, Any] The json formatted documents index
     """
-    file_path = "assets/processed_docs/processed_documents.jsonl"
-    non_simplified_keys: Set[str] =  {
+    non_simplified_keys: Set[str] = {
         "status",
         "original_document",
         "generated_qa",
@@ -169,45 +176,62 @@ async def docs_index() -> Dict[str, Any]:
         "refined_qa",
         "max_retry",
         "error"
-
     }
 
     try:
         indexable_documents = []
-        async for doc in simplify_items_for_search(file_path, non_simplified_keys):
+        async for doc in simplify_items_for_search(non_simplified_keys):
             indexable_documents.append(doc)
 
         return {
-            "status_code" : 200,
-            "message" : "Success",
-            "content" : {"results": indexable_documents}
+            "status_code": 200,
+            "message": "Success",
+            "content": {"results": indexable_documents}
         }
     except Exception as e:
         return {
-            "status_code" : 500,
-            "message" : str(e),
-            "content" : {}
+            "status_code": 500,
+            "message": str(e),
+            "content": {}
         }
 
 async def get_uploaded_docs_info(
-    query_parameters: Annotated[SearchQueryParameters, Query()]
+        query_parameters: SearchQueryParameters = Depends(),
+        valid_key: str = Depends(validate_users_api_key())
 ) -> Dict[str, Any]:
     """
-    Retrieve information about previously uploaded documents based on query parameters.
+    Retrieve information about previously uploaded documents from Blob based on optional query parameters.
+    Returns a single result if 'index' is provided, or a list of all matched documents otherwise.
     """
+    from azure.storage.blob.aio import BlobServiceClient
+    from azure.core.exceptions import ResourceNotFoundError, HttpResponseError
+
     matched_docs = []
+    upload_author_string_rep = (
+        str(query_parameters.upload_author) if query_parameters.upload_author else None
+    )
+
+    blob_service_client = BlobServiceClient.from_connection_string(AZURE_STORAGE_CONNECTION_STRING)
+    container_client = blob_service_client.get_container_client(CONTAINER_NAME)
+    blob_client = container_client.get_blob_client(BLOB_NAME)
 
     try:
-        with open("assets/processed_docs/processed_documents.jsonl", "r") as f:
-            for index, line in enumerate(f):
-                item = json.loads(line)
-                item["index_id"] = index + 1
+        stream = await blob_client.download_blob()
+        contents = (await stream.readall()).decode("utf-8")
+        lines = contents.strip().splitlines()
 
-                if (
-                    item.get("upload_author", {})== str(query_parameters.upload_author) and
-                    item.get("doc_name") == query_parameters.doc_name
-                ):
-                    matched_docs.append(item)
+        for index, line in enumerate(lines):
+            item = json.loads(line)
+            item["index_id"] = index + 1
+
+            matches_any_doc = (
+                    (query_parameters.upload_author and item.get("upload_author", "") == upload_author_string_rep)
+                    or
+                    (query_parameters.doc_name and item.get("doc_name", "") == query_parameters.doc_name)
+            )
+
+            if matches_any_doc or (not query_parameters.upload_author and not query_parameters.doc_name):
+                matched_docs.append(item)
 
         if not matched_docs:
             return {
@@ -216,25 +240,37 @@ async def get_uploaded_docs_info(
                 "content": {}
             }
 
-        # Sort by the selected field
         sorted_docs = sorted(
             matched_docs,
             key=lambda x: x.get(query_parameters.order_by)
         )
 
-        if query_parameters.index > len(sorted_docs):
-            return {
-                "status_code": 404,
-                "message": "Index out of range.",
-                "content": {}
-            }
+        if query_parameters.index is not None:
+            if query_parameters.index > len(sorted_docs):
+                return {
+                    "status_code": 404,
+                    "message": "Index out of range.",
+                    "content": {}
+                }
 
-        selected_doc = sorted_docs[query_parameters.index - 1]
+            selected_doc = sorted_docs[query_parameters.index - 1]
+            return {
+                "status_code": 200,
+                "message": "Single document retrieved successfully.",
+                "content": {"documents_selected": selected_doc}
+            }
 
         return {
             "status_code": 200,
-            "message": "Success",
-            "content": selected_doc
+            "message": f"{len(sorted_docs)} documents retrieved successfully.",
+            "content": {"selected_documents": sorted_docs}
+        }
+
+    except (ResourceNotFoundError, HttpResponseError) as e:
+        return {
+            "status_code": 404,
+            "message": f"Blob error: {str(e)}",
+            "content": {}
         }
 
     except Exception as e:
@@ -244,9 +280,13 @@ async def get_uploaded_docs_info(
             "content": {}
         }
 
-async def upload_docx(input_docs_path: str,
+    finally:
+        await blob_service_client.close()
+
+
+async def upload_docx(input_file: UploadFile = File(...),
                       query_parameters: UploadDocsParameters = Depends(), # This is because it has nested field that we use, so we use it insteaf of Annotated[UploadDocsParameters, Query()]
-                      #valid_key: str = Depends(validate_api_key) #uncommnet for production
+                      valid_key: str = Depends(validate_users_api_key()) #uncommnet for production
                       ) -> Dict[str, Any]:
     """
     Process and upload Word documents to the Qdrant knowledge base asynchronously.
@@ -300,49 +340,111 @@ async def upload_docx(input_docs_path: str,
     Raises:
         ValidationError: Caught internally and returned as HTTP 400 response
         Exception: Other processing errors are propagated to the caller
+        :param valid_key:
+        :param query_parameters:
+        :param input_file:
     """
+    temp_file ="/tmp/uploaded_docs"
+    os.makedirs(temp_file, exist_ok=True)
+    temp_file_path = os.path.join(temp_file, f"{uuid4()}_{input_file.filename}")
+
+    try:
+        with open(temp_file_path, "wb") as temp_file:
+            shutil.copyfileobj(input_file.file, temp_file)
+    except Exception as e:
+        return {
+            "status_code": 500,
+            "message": f"Internal server error: {str(e)}",
+            "content": {}
+        }
+
     try:
 
-        DocxValidator(file_name=input_docs_path)
+        DocxValidator(file_name=temp_file_path)
     except ValidationError as ve:
         return {"status" : 400,
                 "message": str(ve),
                 "content": {}
 
         }
-    examples_docs_path = "assets/real_user_questions/qdrant_data_export.json"
-    initial_state = StateDictionary(
-        status=None,
-        upload_author=query_parameters.upload_author,
-        doc_name=query_parameters.doc_name,
-        updated_collection=query_parameters.update_collection,
-        original_document=None,
-        original_document_path=input_docs_path,
-        generated_qa=None,
-        examples_qa=None,
-        examples_path=examples_docs_path,
-        evaluator_response=None,
-        refined_qa=None,
-        max_retry=0,
-        error=None)
+    try:
+        examples_docs_path = "assets/real_user_questions/qdrant_data_export.json"
+        initial_state = StateDictionary(
+            status=None,
+            upload_author=query_parameters.upload_author,
+            doc_name=query_parameters.doc_name,
+            collection=query_parameters.collection,
+            updated_collection=query_parameters.update_collection,
+            original_document=None,
+            original_document_path=temp_file_path,
+            generated_qa=None,
+            examples_qa=None,
+            examples_path=examples_docs_path,
+            evaluator_response=None,
+            refined_qa=None,
+            max_retry=0,
+            error=None)
 
-    uncompiled_graph = self_reflecting_stategraph_factory_constructor(state_dict=StateDictionary,
-                                                                      node_functions=NODES_FUNCS,
-                                                          router_function=evaluator_router)
-    result = await stategraph_run(
-        initial_state=initial_state,
-        uncompiled_graph=uncompiled_graph,
-    )
+        uncompiled_graph = self_reflecting_stategraph_factory_constructor(state_dict=StateDictionary,
+                                                                          node_functions=NODES_FUNCS,
+                                                              router_function=evaluator_router)
+        result = await stategraph_run(
+            initial_state=initial_state,
+            uncompiled_graph=uncompiled_graph,
+        )
+        if result["error"] is not None:
+            return {"status_code" : 500,
+                    "message" : f"error within the processing pipeline: {result["status"]}",
+                    "content" : result["error"]
 
-    return {
-        "status_code": 200,
-        "message": "Successfully transformed and uploaded documents...",
-        "content": result
-    }
+                    }
+        not_necessary_for_presentation = frozenset({
+            "original_document",
+            "generated_qa",
+            "examples_path",
+            "evaluator_response",
+            "max_retry" ,
+            "error",
+            "updated_collection",
+            "original_document_path",
+            "examples_qa",
+
+
+        })
+        filtered_result = {k:v for k, v in result.items() if k not in not_necessary_for_presentation}
+        presented_results = {
+            k: (
+                [
+                    {ik: iv for ik, iv in item.items() if ik != "vector"}
+                    for item in v
+                ]
+                if k == "refined_qa" and isinstance(v, list)
+                else v
+            )
+            for k, v in filtered_result.items()
+        }
+        return {
+            "status_code": 200,
+            "message": "Successfully transformed and uploaded documents...",
+            "content": presented_results
+        }
+    except Exception as e:
+        return {
+            "status_code": 500,
+            "message": f"Internal server error: {str(e)}",
+            "content": {}
+        }
+    finally:
+        if os.path.exists(temp_file_path):
+            os.remove(temp_file_path)
+
+
+
+ADMIN_KEY_ID = "pre-ingesta-documental-bc-admin-key"
 
 async def generate_api_key_point(
         request: ApiKeyGenerationRequest,
-        # admin_key: Optional[str] = Security(api_key_header) # Uncomment this in case you whish to get ready for testing to release in production.
+        admin_key: str = Depends(validate_admin_api_key(required_id_key=ADMIN_KEY_ID)) # Uncomment this in case you whish to get ready for testing to release in production.
 )-> Dict[str, Any]:
     """
     Public endpoint to generate new api keys protected by admin key if configured. It generates and stores the api_keys.
@@ -351,21 +453,26 @@ async def generate_api_key_point(
     :return: Dictionary containing the new api key
     """
 
-    # We should implement a security measure for the admin in the production case
+
 
     raw_key = generate_api_key()
     hashed_key = hash_key(raw_key)
-    key_id = f"{API_KEY_PREFIX}{hashed_key}"
+
 
     await store_key_in_vault(
-        key_id=key_id,
+        key_id=request.key_id,
         hashed_key=hashed_key,
         description=request.description,
         expire_in_days=request.expire_in_days,
     )
     return {
-        "api_key": raw_key,
-        "description": request.description,
-        "expire_in_days": request.expire_in_days,
-        "warning": "ATENCIÓN: Guarde la clave de forma segura. No volverá a ver la clave nunca más."
+        "status_code": 200,
+        "message": "success",
+        "content": {
+            "api_key": raw_key,
+            "id_key": request.key_id,
+            "description": request.description,
+            "expire_in_days": request.expire_in_days,
+            "warning": "ATENCIÓN: Guarde la clave de forma segura. No volverá a ver la clave nunca más."
+        }
     }

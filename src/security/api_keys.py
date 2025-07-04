@@ -18,4 +18,4 @@ def hash_key(key: str) -> str:
     :param key: API key.
     :return: the hash of the given API key.
     """
-    return hashlib.sha256(key.encode()).hexdigest()
+    return hashlib.sha256(key.encode(encoding="utf-8")).hexdigest()

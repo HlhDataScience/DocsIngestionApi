@@ -6,8 +6,8 @@ requires-python = "==3.12.*"
 dependencies = [
     "aiohttp>=3.12.0",
     "azure-identity>=1.23.0",
-    "azure-keyvault-secrets>=4.9.0", # base para el cliente asíncrono para qdrant
-    "dotenv>=0.9.9", # manejo secretos EXCLUSIVO PARA DEV
+    "azure-keyvault-secrets>=4.9.0", # manejo secretos EXCLUSIVO PARA DEV
+    "azure-storage-blob>=12.25.1",
     "email-validator>=2.2.0",
     "fastapi[standard]>=0.115.12", # implementación concreta de las abstracciones
     "fastexcel>=0.14.0",
@@ -21,6 +21,7 @@ dependencies = [
     "propcache>=0.3.2",
     "pydantic>=2.11.4", # Sistema de tipose seguros para la api
     "pyppeteer>=2.0.0",
+    "python-docx>=1.2.0",
     "requests>=2.32.3", # posible eliuminación
     "unstructured>=0.17.2",
     "unstructured-client>=0.35.0", # cliente para el servcicio de unestructured
@@ -29,6 +30,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "aioresponses>=0.7.8",
+    "dotenv>=0.9.9",
     "mypy>=1.15.0", # type hints
     "nest-asyncio>=1.6.0",
     "notebook>=7.4.3",

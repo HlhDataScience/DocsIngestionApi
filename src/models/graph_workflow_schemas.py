@@ -75,8 +75,9 @@ class StateDictionary(TypedDict):
     :arg error: A json format error that informs if anything has failed in the status flow of the graph.
     """
     status: str | None
-    upload_author: NameEmail
+    upload_author: NameEmail |str
     doc_name: str | None
+    collection: str | None
     updated_collection: bool
     original_document_path: str | None
     original_document: List[Document] | str | None

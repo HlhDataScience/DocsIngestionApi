@@ -11,7 +11,7 @@ Includes:
 - FastApiGetResponse: Schema for processing GET HTTP request responses.
 """
 
-from typing import Any, Dict
+from typing import Any
 
 from pydantic import BaseModel  # type: ignore
 
@@ -33,16 +33,16 @@ class APIInfoResponse(BaseModel):
     message: str
     description: str
     version: str
-    endpoints: Dict[str, str]
+    endpoints: dict[str, str]
 
 class FastApiPostResponse(BaseModel):
     status_code: int
     message: str
-    content: Dict[str, Any]
+    content: dict[str, Any]
 
 class FastApiGetResponse(BaseModel):
     status_code: int
     message: str
-    content: Dict[str, Any]
+    content: dict[str, Any]
 
 

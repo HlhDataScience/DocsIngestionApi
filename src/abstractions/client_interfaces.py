@@ -26,7 +26,8 @@ Note:
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Coroutine, Dict, Iterable, List
+from collections.abc import Coroutine, Iterable
+from typing import Any
 
 from pydantic import BaseModel  # type: ignore
 
@@ -133,7 +134,7 @@ class VectorDataBaseClientInterfaceAsync(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def _verify_points(self, item: Dict[str, Any]) -> Dict[str, Any]:
+    def _verify_points(self, item: dict[str, Any]) -> list[str | Any] | None:
         """
         Verifies data model into database-specific format.
 
@@ -153,7 +154,7 @@ class VectorDataBaseClientInterfaceAsync(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def upload_documents(self, items: Iterable[Dict[str, Any]], batch_size: int) -> Coroutine[Any, Any, Any]| None:
+    async def upload_documents(self, items: Iterable[dict[str, Any]], batch_size: int) -> Coroutine[Any, Any, Any]| None:
         """
         Upload a collection of documents to the vector database in batches.
 
@@ -194,7 +195,7 @@ class VectorDataBaseClientInterfaceAsync(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def _verify_batch(self, point_id:int) -> Coroutine[Any, Any, Any] | None:
+    async def _verify_batch(self, point_id: Any) -> Coroutine[Any, Any, Any] | None:
         """
         Verify that data upload operations completed successfully.
 
@@ -228,7 +229,7 @@ class VectorDataBaseClientInterfaceAsync(ABC):
         """
         raise NotImplementedError
     @abstractmethod
-    async def dense_search(self, dense_vector: List[float], top_k: int) -> Coroutine[Any, Any, Any] | None:
+    async def dense_search(self, dense_vector: list[float], top_k: int) -> Coroutine[Any, Any, Any] | None:
         """
         Perform dense vector similarity search operations.
 
@@ -245,7 +246,7 @@ class VectorDataBaseClientInterfaceAsync(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def batch_queries(self, query_vectors: List[Dict[str, Any]], top_k: int) -> Coroutine[Any, Any, Any] | None:
+    async def batch_queries(self, query_vectors: list[dict[str, Any]], top_k: int) -> Coroutine[Any, Any, Any] | None:
         """
         Execute multiple queries in a single batch operation.
 

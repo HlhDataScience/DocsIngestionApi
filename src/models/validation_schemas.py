@@ -12,7 +12,7 @@ Includes:
 - QdrantDataPointConformer: Schema for validating data points.
 -
 """
-from typing import Any, Dict, List
+from typing import Any
 
 from pydantic import BaseModel, field_validator  # type: ignore
 
@@ -21,12 +21,12 @@ class QdrantValidator(BaseModel):
     """class to validate Qdrant data against a schema
     attributes:
     id(str): uuid4 string version identifier
-    vector(Dict[str, List[Any]]): dense vector  database entries
-    payload(Dict[str, List[Any]]): string database entries
+    vector(dict[str, list[Any]]): dense vector  database entries
+    payload(dict[str, list[Any]]): string database entries
     """
     id: str
-    vector: Dict[str, List[float]]
-    payload: Dict[str, Any]
+    vector: dict[str, list[float]]
+    payload: dict[str, Any]
 
 class DocxValidator(BaseModel):
 
@@ -67,10 +67,10 @@ class DocxValidator(BaseModel):
 
 class QdrantDataPointConformer(BaseModel):
     id: str
-    vector: Dict[str, List[float]]
-    payload: Dict[str, Any]
+    vector: dict[str, list[float]]
+    payload: dict[str, Any]
 
 class QdrantBotAnswerConformer(BaseModel):
     id: str
-    vector: List[float]
-    payload: Dict[str, Any]
+    vector: list[float]
+    payload: dict[str, Any]

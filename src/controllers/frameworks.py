@@ -26,9 +26,9 @@ Dependencies:
 
 Version: 1.1.0
 """
-
+from collections.abc import Sequence
 from pathlib import Path
-from typing import List, Optional, Sequence, Tuple, Type, Union
+from typing import  Optional
 
 from fastapi import Depends, FastAPI
 from typing_extensions import Self
@@ -57,7 +57,7 @@ class FastApiFramework(AppInterface):
         ValueError: If title or version are invalid
     """
 
-    def __init__(self, app_type: Type[FastAPI], title: str = "Test API", version: str = "1.0.0") -> None:
+    def __init__(self, app_type: type[FastAPI], title: str = "Test API", version: str = "1.0.0") -> None:
         """
         Initialize the FastAPI framework wrapper.
 
@@ -78,13 +78,13 @@ class FastApiFramework(AppInterface):
 
     def add_route(
         self,
-        path: Union[str, Path],
+        path: str | Path,
         endpoint: ApiEndPointProtocolFunction,
         methods: Sequence[str],
         response_model: Optional[FastApiGetResponse | FastApiPostResponse] = None,
         status_code: Optional[int] = 200,
-        tags: Optional[List[str]] = None,
-        dependencies: Optional[List[Depends]] = None  # type: ignore
+        tags: Optional[list[str]] = None,
+        dependencies: Optional[list[Depends]] = None  # type: ignore
     ) -> None:
         """
         Add a route to the FastAPI application with validation.
@@ -173,10 +173,10 @@ class FastApiFramework(AppInterface):
     @classmethod
     def from_constructor(
         cls,
-        app_type: Type[FastAPI],
+        app_type: type[FastAPI],
         title: str,
         version: str,
-        api_spec: Tuple[EndpointSpec, ...],
+        api_spec: tuple[EndpointSpec, ...],
     ) -> Self:
         """
         Create a FastApiFramework instance from an API specification.

@@ -25,7 +25,7 @@ Usage:
     generators.
 """
 
-from typing import List, NamedTuple, Optional, Union
+from typing import NamedTuple, Optional
 
 from src.abstractions import (
     ApiEndPointProtocolFunction,
@@ -43,6 +43,6 @@ class EndpointSpec(NamedTuple):
     FastAPI endpoint specification formating class
     """
     path: str
-    handler: Union[ApiEndPointProtocolFunction, AsyncApiEndpointProtocolFunction]
-    required_params: List[str]
-    response_model: Optional[Union[type[FastApiGetResponse], type[FastApiPostResponse], type[APIInfoResponse]]]
+    handler: ApiEndPointProtocolFunction | AsyncApiEndpointProtocolFunction
+    required_params:  list[str]
+    response_model: Optional[type[FastApiGetResponse]| type[FastApiPostResponse]| type[APIInfoResponse]]

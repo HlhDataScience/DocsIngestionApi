@@ -13,9 +13,7 @@ from dotenv import dotenv_values  # type: ignore
 from src.utils import create_engine
 
 # Load environment variables from the .env.azure file
-DOTENV_PATH = "src/application/.env.azure.gpt4"
-env_vars = dotenv_values(DOTENV_PATH)
-
+env_vars =  os.environ.values()
 # Ensure all required environment variables are injected into os.environ
 required_keys = [
     "AZURE_OPENAI_API_KEY",
@@ -25,10 +23,10 @@ required_keys = [
 ]
 
 for key in required_keys:
-    value = env_vars.get(key)
+    value = os.getenv(key)
     if not value:
         raise ValueError(f"Missing required environment variable: {key}")
-    os.environ[key] = value  # Inject into runtime environment
+
 
 # Load engine parameters from config.yaml
 CONFIG_PATH = "src/application/config.yaml"

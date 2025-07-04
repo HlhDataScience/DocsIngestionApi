@@ -23,7 +23,7 @@ Usage:
     where structured parameter validation is required.
 """
 
-from typing import Literal
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field, NameEmail
 
@@ -41,9 +41,9 @@ class SearchQueryParameters(BaseModel):
         order_by (Literal): The field to order the results by, can be 'index_id',
                             'prediction', or 'time_stamp'.
     """
-    upload_author: NameEmail = Field(..., title="Upload author", description="Autor original del procesado del documento.")
-    doc_name: str = Field(..., title="Document name", description="Nombre original del documento word.")
-    index: int =  Field(..., ge=1, le=10, title="Index", description="índice de documentos transformados y subidos a Qdrant")
+    upload_author: Optional[NameEmail] = Field(None, title="Upload author", description="Autor original del procesado del documento.")
+    doc_name: Optional[str] = Field(None, title="Document name", description="Nombre original del documento word.")
+    index: Optional[int] =  Field(None, ge=1, le=10, title="Index", description="índice de documentos transformados y subidos a Qdrant")
     order_by: Literal["index_id", "doc_name"] = "index_id"
 
 class UploadDocsParameters(BaseModel):
@@ -54,5 +54,5 @@ class UploadDocsParameters(BaseModel):
     """
     upload_author: NameEmail = Field(..., title="Upload author", description="Autor original del procesado del documento.")
     doc_name: str = Field(..., title="Document name", description="Nombre original del documento word.")
-    collection: Literal["Coll1", "Coll2", "Coll3", "Coll4", "Coll5", "Coll6"] = Field(..., title="Collection", description="Colección a la que subir el documento")
+    collection: Literal["PreTestSyntheticDocs", "NotImplemented", "NotImplemented", "NotImplemented", "NotImplemented", "NotImplemented"] = Field(..., title="Collection", description="Colección a la que subir el documento")
     update_collection: bool = Field(..., title="Update document", description=" Si la condición es verdadera, sobreescribe y actualiza los datos de la colección en Qdrant")

@@ -26,8 +26,8 @@ Usage Pattern:
     )
 
 """
-
-from typing import Any, Coroutine
+from collections.abc import Coroutine
+from typing import Any
 
 from langgraph.graph import StateGraph
 
